@@ -362,3 +362,86 @@ stringlist_contains(stringlist_t *l, const char *name)
 	}
 	return (false);
 }
+
+/*
+  Compares two reverse-sorted stringlists (either "value" or "key:value"
+  style) and describes how they differ.  Returns NULL if they are identical,
+  otherwise returns a malloced string in the format "changed: s1:a->b, ...,
+  added: s2, s3, ..., removed s4, s5, ...".  Strings in the ignore hash will
+  be skipped.
+*/
+char *
+stringlist_diff(stringlist_t *sl_l, stringlist_t *sl_r, struct pkghash *ignore)
+{
+	__typeof__(sl_l->head) l, r;
+	xstring *changed_xs, *added_xs, *removed_xs;
+	char *changed, *added, *removed;
+	
+	l = sl_l->head;
+	r = sl_r->head;
+
+	changed_xs = xstring_new();
+	added_xs = xstring_new();
+	removed_xs = xstring_new();
+	
+	while (l != NULL || r != NULL) {
+		int rv;
+		if (l == NULL)
+		  rv = -1;
+		else if (r == NULL)
+		  rv = 1;
+		else {
+			char *colon = strchr(l->item, ':');
+			rv = strcmp(l->item, r->item);
+			if (rv != 0 && colon != NULL) {
+				int prefixlen = colon - l->item + 1;
+				/* check if the prefix matches */
+				if (strncmp(l->item, r->item, prefixlen) == 0) {
+					rv = 0;
+					fprintf(changed_xs->fp, ", %.*s:%s->%s", prefixlen, r->item,
+						(l->item)+prefixlen, (r->item)+prefixlen);
+				}
+			}
+		}
+
+		if (rv < 0) {
+			if (pkghash_get(ignore, r->item) == NULL)
+				fprintf(added_xs->fp, ", %s", r->item);
+			r = r->next;
+		} else if (rv > 0) {
+			if (pkghash_get(ignore, l->item) == NULL)
+				fprintf(removed_xs->fp, ", %s", l->item);
+			l = l->next;
+		} else {
+			l = l->next;
+			r = r->next;
+		}
+	}
+	
+	changed = xstring_get(changed_xs);
+	added = xstring_get(added_xs);
+	removed = xstring_get(removed_xs);
+
+	if (*changed || *added || *removed) {
+		xstring *ret;
+		int comma = 0;
+		/* adding 2 skips the leading ", " in each string */
+		ret = xstring_new();
+		if (*changed) {
+			fprintf(ret->fp, "changed: %s", changed + 2);
+			comma = 1;
+		}
+		if (*added) {
+			fprintf(ret->fp, "%sadded: %s", comma?", ":"", added + 2);
+			comma = 1;
+		}
+		if (*removed)
+			fprintf(ret->fp, "%sremoved: %s", comma?", ":"", removed + 2);
+		free(changed);
+		free(added);
+		free(removed);
+		return (xstring_get(ret));
+	}
+	
+	return (NULL);
+}

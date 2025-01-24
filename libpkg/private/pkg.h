@@ -855,6 +855,7 @@ void trigger_free(struct trigger *);
 void append_touched_dir(const char *path);
 void append_touched_file(const char *path);
 bool stringlist_contains(stringlist_t *l, const char *name);
+char *stringlist_diff(stringlist_t *l, stringlist_t *r, struct pkghash *ignore);
 
 int pkg_parse_manifest_ucl(struct pkg *pkg, ucl_object_t *o);
 int pkg_get_reposdirfd(void);
