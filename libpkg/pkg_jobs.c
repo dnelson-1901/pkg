@@ -1053,12 +1053,17 @@ pkg_jobs_need_upgrade(struct pkghash *system_shlibs, struct pkg *rp, struct pkg 
 	struct pkg_option *lo = NULL, *ro = NULL;
 	struct pkg_dep *ld = NULL, *rd = NULL;
 	struct pkg_conflict *lc = NULL, *rc = NULL;
-	const char **l1;
-	size_t i;
+	stringlist_t rsl = tll_init(), lsl = tll_init();
+	char *rv;
+
+	if (!rp->reason) xasprintf(&rp->reason, "p_j_n_u %s %s no reason?", rp->name, rp->origin);
 
 	/* If no local package, then rp is obviously need to be added */
 	if (lp == NULL)
+	{
+		xasprintf(&rp->reason, "new");
 		return true;
+	}
 
 	/* Do not upgrade locked packages */
 	if (lp->locked) {
@@ -1079,7 +1084,10 @@ pkg_jobs_need_upgrade(struct pkghash *system_shlibs, struct pkg *rp, struct pkg 
 	if (ret > 0)
 		return (false);
 	else if (ret < 0)
+	{
+		xasprintf(&rp->reason, "new version");
 		return (true);
+	}
 
 	/* Compare archs */
 	if (!STREQ(lp->abi, rp->abi)) {
@@ -1091,6 +1099,7 @@ pkg_jobs_need_upgrade(struct pkghash *system_shlibs, struct pkg *rp, struct pkg 
 	}
 
 	/* compare options */
+#if 0
 	for (;;) {
 		if (!pkg_object_bool(pkg_config_get("PKG_REINSTALL_ON_OPTIONS_CHANGE")))
 			break;
@@ -1121,8 +1130,36 @@ pkg_jobs_need_upgrade(struct pkghash *system_shlibs, struct pkg *rp, struct pkg 
 		else
 			break;
 	}
+#else
+	if (pkg_object_bool(pkg_config_get("PKG_REINSTALL_ON_OPTIONS_CHANGE"))) {
+		while (pkg_options(rp, &ro) == EPKG_OK) {
+			char *str;
+			asprintf(&str, "%s:%s", ro->key, ro->value);
+			tll_push_back(rsl, str);
+		}
+		while (pkg_options(lp, &lo) == EPKG_OK) {
+			char *str;
+			asprintf(&str, "%s:%s", lo->key, lo->value);
+			tll_push_back(lsl, str);
+		}
+		if (STREQ(rp->name,"zpixman"))stringlist_debug=true; 
+		tll_sort(lsl, -strcmp);
+		tll_sort(rsl, -strcmp);
+		rv = stringlist_diff(&lsl, &rsl, NULL);
+		tll_free_and_free(lsl, free);
+		tll_free_and_free(rsl, free);
+		
+		if (rv) {
+			free(rp->reason);
+			xasprintf(&rp->reason, "options %s", rv);
+			free(rv);
+			return (true);
+		}
+	}
+#endif
 
 	/* What about the direct deps */
+#if 0
 	for (;;) {
 		ret1 = pkg_deps(rp, &rd);
 		ret2 = pkg_deps(lp, &ld);
@@ -1153,8 +1190,28 @@ pkg_jobs_need_upgrade(struct pkghash *system_shlibs, struct pkg *rp, struct pkg 
 		else
 			break;
 	}
+#else
+	while (pkg_deps(rp, &rd) == EPKG_OK) 
+		tll_push_back(rsl, rd->name);
+	while (pkg_deps(lp, &ld) == EPKG_OK) 
+		tll_push_back(lsl, ld->name);
+	if (STREQ(rp->name,"zradare2"))stringlist_debug=true; 
+	tll_sort(lsl, -strcmp);
+	tll_sort(rsl, -strcmp);
+	rv = stringlist_diff(&lsl, &rsl, NULL);
+	tll_free(lsl);
+	tll_free(rsl);
+		
+	if (rv) {
+		free(rp->reason);
+		xasprintf(&rp->reason, "direct dependencies %s", rv);
+		free(rv);
+		return (true);
+	}
+#endif
 
 	/* Conflicts */
+#if 0
 	for (;;) {
 		ret1 = pkg_conflicts(rp, &rc);
 		ret2 = pkg_conflicts(lp, &lc);
@@ -1173,117 +1230,60 @@ pkg_jobs_need_upgrade(struct pkghash *system_shlibs, struct pkg *rp, struct pkg 
 		else
 			break;
 	}
+#else
+	while (pkg_conflicts(rp, &rc) == EPKG_OK) 
+		tll_push_back(rsl, rc->uid);
+	while (pkg_conflicts(lp, &lc) == EPKG_OK) 
+		tll_push_back(lsl, lc->uid);
+		
+	tll_sort(lsl, -strcmp);
+	tll_sort(rsl, -strcmp);
+	rv = stringlist_diff(&lsl, &rsl, NULL);
+	tll_free(lsl);
+	tll_free(rsl);
+		
+	if (rv) {
+		free(rp->reason);
+		xasprintf(&rp->reason, "direct conflicts %s", rv);
+		free(rv);
+		return (true);
+	}
+#endif
 
 	/* Provides */
-	if (tll_length(rp->provides) != tll_length(lp->provides)) {
+	rv = stringlist_diff(&lp->provides, &rp->provides, NULL);
+	if (rv) {
 		free(rp->reason);
-		rp->reason = xstrdup("provides changed");
+		xasprintf(&rp->reason, "provides %s", rv);
+		free(rv);
 		return (true);
 	}
-	l1 = xcalloc(tll_length(lp->provides), sizeof (char*));
-	i = 0;
-	tll_foreach(lp->provides, l) {
-		l1[i++] = l->item;
-	}
-	i = 0;
-	tll_foreach(rp->provides, r) {
-		if (!STREQ(r->item, l1[i])) {
-			free(rp->reason);
-			rp->reason = xstrdup("provides changed");
-			free(l1);
-			return (true);
-		}
-	}
-	free(l1);
-
+	
 	/* Requires */
-	if (tll_length(rp->requires) != tll_length(lp->requires)) {
+	rv = stringlist_diff(&lp->requires, &rp->requires, NULL);
+	if (rv) {
 		free(rp->reason);
-		rp->reason = xstrdup("requires changed");
+		xasprintf(&rp->reason, "requires %s", rv);
+		free(rv);
 		return (true);
 	}
-	l1 = xcalloc(tll_length(lp->requires), sizeof (char*));
-	i = 0;
-	tll_foreach(lp->requires, l) {
-		l1[i++] = l->item;
-	}
-	i = 0;
-	tll_foreach(rp->requires, r) {
-		if (!STREQ(r->item, l1[i])) {
-			free(rp->reason);
-			rp->reason = xstrdup("requires changed");
-			free(l1);
-			return (true);
-		}
-	}
-	free(l1);
 
 	/* Finish by the shlibs */
-	if (tll_length(rp->shlibs_provided) != tll_length(lp->shlibs_provided)) {
+	rv = stringlist_diff(&lp->shlibs_provided, &rp->shlibs_provided, NULL);
+	if (rv) {
 		free(rp->reason);
-		rp->reason = xstrdup("provided shared library changed");
+		xasprintf(&rp->reason, "provided shared libraries %s", rv);
+		free(rv);
 		return (true);
 	}
-	l1 = xcalloc(tll_length(lp->shlibs_provided), sizeof (char*));
-	i = 0;
-	tll_foreach(lp->shlibs_provided, l) {
-		l1[i++] = l->item;
-	}
-	i = 0;
-	tll_foreach(rp->shlibs_provided, r) {
-		if (!STREQ(r->item, l1[i])) {
-			free(rp->reason);
-			rp->reason = xstrdup("provided shared library changed");
-			free(l1);
-			return (true);
-		}
-		i++;
-	}
-	free(l1);
 
-	size_t cntr = tll_length(rp->shlibs_required);
-	size_t cntl = tll_length(lp->shlibs_required);
-	if (cntr != cntl) {
-		if (system_shlibs != NULL) {
-		/*
-		 * before considering shlibs we need to check if we are running
-		 * pkgbase
-		 */
-			tll_foreach(rp->shlibs_required, r) {
-				if (pkghash_get(system_shlibs, r->item) != NULL)
-					cntr--;
-			}
-			tll_foreach(lp->shlibs_required, l) {
-				if (pkghash_get(system_shlibs, l->item) != NULL)
-					cntl--;
-			}
-		}
-		if (cntr != cntl) {
-			free(rp->reason);
-			rp->reason = xstrdup("required shared library changed");
-			return (true);
-		}
+	if (STREQ(rp->name,"zmtr"))stringlist_debug=true; rv = stringlist_diff(&lp->shlibs_required, &rp->shlibs_required, system_shlibs);
+	if (rv) {
+		free(rp->reason);
+		xasprintf(&rp->reason, "required shared libraries %s", rv);
+		free(rv);
+		return (true);
 	}
-	l1 = xcalloc(tll_length(lp->shlibs_required), sizeof (char*));
-	i = 0;
-	tll_foreach(lp->shlibs_required, l) {
-		if (pkghash_get(system_shlibs, l->item) != NULL)
-			continue;
-		l1[i++] = l->item;
-	}
-	i = 0;
-	tll_foreach(rp->shlibs_required, r) {
-		if (pkghash_get(system_shlibs, r->item) != NULL)
-			continue;
-		if (!STREQ(r->item, l1[i])) {
-			free(rp->reason);
-			rp->reason = xstrdup("required shared library changed");
-			free(l1);
-			return (true);
-		}
-		i++;
-	}
-	free(l1);
 
 	return (false);
 }
