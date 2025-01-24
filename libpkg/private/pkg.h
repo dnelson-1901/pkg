@@ -897,6 +897,7 @@ void trigger_is_it_a_cleanup(struct triggers *t, const char *path);
 void trigger_free(struct trigger *);
 void append_touched_dir(const char *path);
 void append_touched_file(const char *path);
+char *charv_diff(charv_t *l, charv_t *r, charv_t *ignore);
 
 int pkg_parse_manifest_ucl(struct pkg *pkg, ucl_object_t *o);
 int pkg_get_reposdirfd(void);
