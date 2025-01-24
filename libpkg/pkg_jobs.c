@@ -1042,9 +1042,14 @@ pkg_jobs_need_upgrade(charv_t *system_shlibs, struct pkg *rp, struct pkg *lp)
 	struct pkg_dep *ld = NULL, *rd = NULL;
 	struct pkg_conflict *lc = NULL, *rc = NULL;
 
+	if (!rp->reason) xasprintf(&rp->reason, "p_j_n_u %s %s no reason?", rp->name, rp->origin);
+
 	/* If no local package, then rp is obviously need to be added */
 	if (lp == NULL)
+	{
+		xasprintf(&rp->reason, "new");
 		return true;
+	}
 
 	/* Do not upgrade locked packages */
 	if (lp->locked) {
@@ -1065,7 +1070,10 @@ pkg_jobs_need_upgrade(charv_t *system_shlibs, struct pkg *rp, struct pkg *lp)
 	if (ret > 0)
 		return (false);
 	else if (ret < 0)
+	{
+		xasprintf(&rp->reason, "new version");
 		return (true);
+	}
 
 	/* Compare archs */
 	if (!STREQ(lp->abi, rp->abi)) {
