@@ -362,3 +362,62 @@ stringlist_contains(stringlist_t *l, const char *name)
 	}
 	return (false);
 }
+
+/*
+  Compares two reverse-sorted stringlists and describes how they differ.
+  Returns NULL if they are identical, otherwise returns a malloced
+  string in the format "added: s1, s2, ..., removed s3, s4, ...".
+  Strings in the ignore hash will be skipped.
+*/
+char *
+stringlist_diff(stringlist_t *sl_l, stringlist_t *sl_r, struct pkghash *ignore)
+{
+	__typeof__(sl_l->head) l, r;
+	xstring *added_xs, *removed_xs;
+	char *added, *removed;
+	
+	l = sl_l->head;
+	r = sl_r->head;
+
+	added_xs = xstring_new();
+	removed_xs = xstring_new();
+	
+	while (l != NULL || r != NULL) {
+		int rv;
+		rv = strcmp(l ? l->item : "", r ? r->item : "");
+		
+		if (rv < 0) {
+			if (pkghash_get(ignore, r->item) == NULL)
+				fprintf(added_xs->fp, ", %s", r->item);
+			r = r->next;
+		} else if (rv > 0) {
+			if (pkghash_get(ignore, l->item) == NULL)
+				fprintf(removed_xs->fp, ", %s", l->item);
+			l = l->next;
+		} else {
+			l = l->next;
+			r = r->next;
+		}
+	}
+	
+	added = xstring_get(added_xs);
+	removed = xstring_get(removed_xs);
+	
+	if (*added || *removed) {
+		xstring *ret;
+
+		ret = xstring_new();
+		/* adding 2 skips the leading ", " in each string */
+		if (*added)
+			fprintf(ret->fp, "added: %s", added + 2);
+		if (*added && *removed)
+			fprintf(ret->fp, ", ");
+		if (*removed)
+			fprintf(ret->fp, "removed: %s", removed + 2);
+		free(added);
+		free(removed);
+		return (xstring_get(ret));
+	}
+	
+	return (NULL);
+}
