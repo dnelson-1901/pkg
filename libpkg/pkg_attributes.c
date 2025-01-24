@@ -354,3 +354,92 @@ pkg_get_element(struct pkg *p, pkg_attr a)
 
 	return (e);
 }
+
+/*
+  Compares two charv_t's (either "value" or "key:value" style) and describes
+  how they differ.  Returns NULL if they are identical, otherwise returns a
+  malloced string in the format "changed: s1:a->b, ..., added: s2, s3, ...,
+  removed s4, s5, ...".  Strings in the ignore charv_t will be skipped.
+*/
+char *
+charv_diff(charv_t *cv_l, charv_t *cv_r, charv_t *ignore)
+{
+	int li, ri;
+	xstring *changed_xs, *added_xs, *removed_xs;
+	char *changed, *added, *removed;
+
+	assert(cv_l->unsorted == false);
+	assert(cv_r->unsorted == false);
+	assert(ignore == NULL || ignore->unsorted == false);
+
+	li = 0;
+	ri = 0;
+
+	changed_xs = xstring_new();
+	added_xs = xstring_new();
+	removed_xs = xstring_new();
+
+	while (li < vec_len(cv_l) || ri < vec_len(cv_r)) {
+		int rv;
+		if (li == vec_len(cv_l))
+		  rv = 1;
+		else if (ri == vec_len(cv_r))
+		  rv = -1;
+		else {
+			rv = strcmp(cv_l->d[li], cv_r->d[ri]);
+			if (rv != 0) {
+				/* different strings, but maybe the prefix matches? */
+				char *colon = strchr(cv_l->d[li], ':');
+				if (colon != NULL) {
+					int prefixlen = colon - cv_l->d[li] + 1;
+					/* if the prefix matches, it's a change */
+					if (strncmp(cv_l->d[li], cv_r->d[ri], prefixlen) == 0) {
+						rv = 0;
+						fprintf(changed_xs->fp, ", %.*s:%s->%s", prefixlen-1, cv_r->d[ri],
+							(cv_l->d[li])+prefixlen, (cv_r->d[ri])+prefixlen);
+					}
+				}
+			}
+		}
+
+		if (rv > 0) {
+			if (!ignore || charv_search(ignore, cv_r->d[ri]) == NULL)
+				fprintf(added_xs->fp, ", %s", cv_r->d[ri]);
+			ri++;
+		} else if (rv < 0) {
+			if (!ignore || charv_search(ignore, cv_l->d[li]) == NULL)
+				fprintf(removed_xs->fp, ", %s", cv_l->d[li]);
+			li++;
+		} else {
+			li++;
+			ri++;
+		}
+	}
+
+	changed = xstring_get(changed_xs);
+	added = xstring_get(added_xs);
+	removed = xstring_get(removed_xs);
+
+	if (*changed || *added || *removed) {
+		xstring *ret;
+		int comma = 0;
+		/* adding 2 skips the leading ", " in each string */
+		ret = xstring_new();
+		if (*changed) {
+			fprintf(ret->fp, "changed: %s", changed + 2);
+			comma = 1;
+		}
+		if (*added) {
+			fprintf(ret->fp, "%sadded: %s", comma?", ":"", added + 2);
+			comma = 1;
+		}
+		if (*removed)
+			fprintf(ret->fp, "%sremoved: %s", comma?", ":"", removed + 2);
+		free(changed);
+		free(added);
+		free(removed);
+		return (xstring_get(ret));
+	}
+
+	return (NULL);
+}
