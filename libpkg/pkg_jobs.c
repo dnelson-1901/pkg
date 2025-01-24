@@ -68,6 +68,8 @@
 #include "private/pkgdb.h"
 #include "private/pkg_jobs.h"
 
+#define charv_sort(cv, func) do { qsort((cv)->d, (cv)->len, sizeof(char *), func); (cv)->unsorted = false; } while (0)
+
 extern struct pkg_ctx ctx;
 
 static int _pkg_is_installed(struct pkg_jobs *j, const char *pattern,
@@ -1041,6 +1043,9 @@ pkg_jobs_need_upgrade(charv_t *system_shlibs, struct pkg *rp, struct pkg *lp)
 	struct pkg_option *lo = NULL, *ro = NULL;
 	struct pkg_dep *ld = NULL, *rd = NULL;
 	struct pkg_conflict *lc = NULL, *rc = NULL;
+	charv_t rsv = vec_init();
+	charv_t lsv = vec_init();
+	char *rv;
 
 	if (!rp->reason) xasprintf(&rp->reason, "p_j_n_u %s %s no reason?", rp->name, rp->origin);
 
@@ -1091,6 +1096,7 @@ pkg_jobs_need_upgrade(charv_t *system_shlibs, struct pkg *rp, struct pkg *lp)
 	}
 
 	/* compare options */
+#if 0
 	for (;;) {
 		if (!pkg_object_bool(pkg_config_get("PKG_REINSTALL_ON_OPTIONS_CHANGE")))
 			break;
@@ -1121,8 +1127,36 @@ pkg_jobs_need_upgrade(charv_t *system_shlibs, struct pkg *rp, struct pkg *lp)
 		else
 			break;
 	}
+#else
+	if (pkg_object_bool(pkg_config_get("PKG_REINSTALL_ON_OPTIONS_CHANGE"))) {
+		while (pkg_options(rp, &ro) == EPKG_OK) {
+			char *str;
+			asprintf(&str, "%s:%s", ro->key, ro->value);
+			vec_push(&rsv, str);
+		}
+		while (pkg_options(lp, &lo) == EPKG_OK) {
+			char *str;
+			asprintf(&str, "%s:%s", lo->key, lo->value);
+			vec_push(&lsv, str);
+		}
+
+		charv_sort(&lsv, char_cmp);
+		charv_sort(&rsv, char_cmp);
+		rv = charv_diff(&lsv, &rsv, NULL);
+		vec_free_and_free(&lsv, free);
+		vec_free_and_free(&rsv, free);
+
+		if (rv) {
+			free(rp->reason);
+			xasprintf(&rp->reason, "options %s", rv);
+			free(rv);
+			return (true);
+		}
+	}
+#endif
 
 	/* What about the direct deps */
+#if 0
 	for (;;) {
 		ret1 = pkg_deps(rp, &rd);
 		ret2 = pkg_deps(lp, &ld);
@@ -1153,8 +1187,34 @@ pkg_jobs_need_upgrade(charv_t *system_shlibs, struct pkg *rp, struct pkg *lp)
 		else
 			break;
 	}
+#else
+	while (pkg_deps(rp, &rd) == EPKG_OK) {
+		char *str;
+		asprintf(&str, "%s:%s", rd->name, rd->origin);
+		vec_push(&rsv, str);
+	}
+	while (pkg_deps(lp, &ld) == EPKG_OK) {
+		char *str;
+		asprintf(&str, "%s:%s", ld->name, ld->origin);
+		vec_push(&lsv, str);
+	}
+
+	charv_sort(&lsv, char_cmp);
+	charv_sort(&rsv, char_cmp);
+	rv = charv_diff(&lsv, &rsv, NULL);
+	vec_free_and_free(&lsv, free);
+	vec_free_and_free(&rsv, free);
+
+	if (rv) {
+		free(rp->reason);
+		xasprintf(&rp->reason, "direct dependencies %s", rv);
+		free(rv);
+		return (true);
+	}
+#endif
 
 	/* Conflicts */
+#if 0
 	for (;;) {
 		ret1 = pkg_conflicts(rp, &rc);
 		ret2 = pkg_conflicts(lp, &lc);
@@ -1173,79 +1233,63 @@ pkg_jobs_need_upgrade(charv_t *system_shlibs, struct pkg *rp, struct pkg *lp)
 		else
 			break;
 	}
+#else
+	while (pkg_conflicts(rp, &rc) == EPKG_OK) 
+		vec_push(&rsv, rc->uid);
+	while (pkg_conflicts(lp, &lc) == EPKG_OK) 
+		vec_push(&lsv, lc->uid);
 
-	/* Provides */
-	if (vec_len(&rp->provides) != vec_len(&lp->provides)) {
+	charv_sort(&lsv, char_cmp);
+	charv_sort(&rsv, char_cmp);
+	rv = charv_diff(&lsv, &rsv, NULL);
+	vec_free_and_free(&lsv, free);
+	vec_free_and_free(&rsv, free);
+
+	if (rv) {
 		free(rp->reason);
-		rp->reason = xstrdup("provides changed");
+		xasprintf(&rp->reason, "direct conflicts %s", rv);
+		free(rv);
 		return (true);
 	}
+#endif
+
+	/* Provides */
 	pkg_lists_sort(lp);
 	pkg_lists_sort(rp);
-
-	vec_foreach(lp->provides, i) {
-		if (!STREQ(lp->provides.d[i], rp->provides.d[i])) {
-			free(rp->reason);
-			rp->reason = xstrdup("provides changed");
-			return (true);
-		}
+	rv = charv_diff(&lp->provides, &rp->provides, NULL);
+	if (rv) {
+		free(rp->reason);
+		xasprintf(&rp->reason, "provides %s", rv);
+		free(rv);
+		return (true);
 	}
 
 	/* Requires */
-	if (vec_len(&rp->requires) != vec_len(&lp->requires)) {
+	rv = charv_diff(&lp->requires, &rp->requires, NULL);
+	if (rv) {
 		free(rp->reason);
-		rp->reason = xstrdup("requires changed");
+		xasprintf(&rp->reason, "requires %s", rv);
+		free(rv);
 		return (true);
-	}
-	vec_foreach(lp->requires, i) {
-		if (!STREQ(lp->requires.d[i], rp->requires.d[i])) {
-			free(rp->reason);
-			rp->reason = xstrdup("requires changed");
-			return (true);
-		}
 	}
 
 	/* Finish by the shlibs */
-	if (vec_len(&rp->shlibs_provided) != vec_len(&lp->shlibs_provided)) {
+	rv = charv_diff(&lp->shlibs_provided, &rp->shlibs_provided, NULL);
+	if (rv) {
 		free(rp->reason);
-		rp->reason = xstrdup("provided shared library changed");
+		xasprintf(&rp->reason, "provided shared libraries %s", rv);
+		free(rv);
 		return (true);
-	}
-	vec_foreach(lp->shlibs_provided, i) {
-		if (!STREQ(lp->shlibs_provided.d[i], rp->shlibs_provided.d[i])) {
-			free(rp->reason);
-			rp->reason = xstrdup("provided shared library changed");
-			return (true);
-		}
 	}
 
-	size_t cntr = vec_len(&rp->shlibs_required);
-	size_t cntl = vec_len(&lp->shlibs_required);
-	if (cntr != cntl & system_shlibs == NULL) {
+	rv = charv_diff(&lp->shlibs_required, &rp->shlibs_required, system_shlibs);
+	if (rv) {
 		free(rp->reason);
-		rp->reason = xstrdup("required shared library changed");
+		xasprintf(&rp->reason, "required shared libraries %s", rv);
+		free(rv);
 		return (true);
 	}
-	size_t i, j;
 
-	for (i = 0, j = 0; i < cntl && j < cntr; i++, j++) {
-		if (STREQ(lp->shlibs_required.d[i], rp->shlibs_required.d[j]))
-				continue;
-		if (system_shlibs != NULL) {
-			if (charv_search(system_shlibs, lp->shlibs_required.d[i]) != NULL) {
-				j--;
-				continue;
-			}
-			if (charv_search(system_shlibs, rp->shlibs_required.d[j]) != NULL) {
-				i++;
-				continue;
-			}
-		}
-		free(rp->reason);
-		rp->reason = xstrdup("required shared library changed");
-		return (true);
-		break;
-	}
 	return (false);
 }
 
