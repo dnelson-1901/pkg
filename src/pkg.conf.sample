@@ -35,6 +35,7 @@
 #PLUGINS_CONF_DIR = "/usr/local/etc/pkg/";
 #PERMISSIVE = false;
 #REPO_AUTOUPDATE = true;
+#FORCE_CAN_REMOVE_VITAL = true;
 #NAMESERVER = "";
 #HTTP_USER_AGENT = "Custom_User_Manager";
 #EVENT_PIPE = "";
@@ -66,7 +67,7 @@ ALIAS {
     iinfo = "info -ix";
     isearch = "search -ix";
     prime-list = "query -e '%a = 0' '%n'";
-    prime-origins = "query -e '%a = 0' '%o' | sort -u";
+    prime-origins = "query -e '%a = 0' '%o'";
     leaf = "query -e '%#r == 0' '%n-%v'";
     list = "info -ql";
     noauto = "query -e '%a == 0' '%n-%v'";

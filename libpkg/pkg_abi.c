@@ -22,6 +22,7 @@
 #include "private/binfmt.h"
 #include "private/event.h"
 #include "private/pkg.h"
+#include "private/utils.h"
 #include "xmalloc.h"
 
 #define _PATH_UNAME "/usr/bin/uname"
@@ -438,17 +439,61 @@ pkg_arch_to_legacy(const char *arch, char *dest, size_t sz)
 	return (0);
 }
 
+void
+pkg_cleanup_shlibs_required(struct pkg *pkg, stringlist_t *internal_provided)
+{
+	struct pkg_file *file = NULL;
+	const char *lib;
+
+	tll_foreach(pkg->shlibs_required, s)
+	{
+		if (stringlist_contains(&pkg->shlibs_provided, s->item) ||
+		    stringlist_contains(internal_provided, s->item)) {
+			pkg_debug(2,
+			    "remove %s from required shlibs as the "
+			    "package %s provides this library itself",
+			    s->item, pkg->name);
+			tll_remove_and_free(pkg->shlibs_required, s, free);
+			continue;
+		}
+		if (match_ucl_lists(s->item,
+		    pkg_config_get("SHLIB_REQUIRE_IGNORE_GLOB"),
+		    pkg_config_get("SHLIB_REQUIRE_IGNORE_REGEX"))) {
+			pkg_debug(2,
+			    "remove %s from required shlibs for package %s as it "
+			    "is matched by SHLIB_REQUIRE_IGNORE_GLOB/REGEX.",
+			    s->item, pkg->name);
+			tll_remove_and_free(pkg->shlibs_required, s, free);
+			continue;
+		}
+		file = NULL;
+		while (pkg_files(pkg, &file) == EPKG_OK) {
+			if ((lib = strstr(file->path, s->item)) != NULL &&
+			    strlen(lib) == strlen(s->item) && lib[-1] == '/') {
+				pkg_debug(2,
+				    "remove %s from required shlibs as "
+				    "the package %s provides this file itself",
+				    s->item, pkg->name);
+
+				tll_remove_and_free(pkg->shlibs_required, s,
+				    free);
+				break;
+			}
+		}
+	}
+}
+
 int
 pkg_analyse_files(struct pkgdb *db __unused, struct pkg *pkg, const char *stage)
 {
 	struct pkg_file *file = NULL;
 	int ret = EPKG_OK;
 	char fpath[MAXPATHLEN + 1];
-	const char *lib;
 	bool failures = false;
 
 	int (*pkg_analyse_init)(const char *stage);
-	int (*pkg_analyse)(const bool developer_mode, struct pkg *pkg, const char *fpath);
+	int (*pkg_analyse)(const bool developer_mode, struct pkg *pkg,
+	    const char *fpath, char **provided, enum pkg_shlib_flags *flags);
 	int (*pkg_analyse_close)();
 
 	if (0 == strncmp(pkg->abi, "Darwin", 6)) {
@@ -479,45 +524,96 @@ pkg_analyse_files(struct pkgdb *db __unused, struct pkg *pkg, const char *stage)
 		pkg->flags &= ~(PKG_CONTAINS_ELF_OBJECTS |
 		    PKG_CONTAINS_STATIC_LIBS | PKG_CONTAINS_LA);
 
+	/* shlibs that are provided by files in the package but not matched by
+	   SHLIB_PROVIDE_PATHS_* are still used to filter the shlibs
+	   required by the package */
+	stringlist_t internal_provided = tll_init();
+	/* list of shlibs that are in the path to be evaluated for provided but are symlinks */
+	stringlist_t maybe_provided = tll_init();
+
 	while (pkg_files(pkg, &file) == EPKG_OK) {
+		struct stat st;
 		if (stage != NULL)
 			snprintf(fpath, sizeof(fpath), "%s/%s", stage,
 			    file->path);
 		else
 			strlcpy(fpath, file->path, sizeof(fpath));
 
-		ret = pkg_analyse(ctx.developer_mode, pkg, fpath);
+		char *provided = NULL;
+		enum pkg_shlib_flags provided_flags = PKG_SHLIB_FLAGS_NONE;
+
+		ret = pkg_analyse(ctx.developer_mode, pkg, fpath, &provided, &provided_flags);
 		if (EPKG_WARN == ret) {
 			failures = true;
 		}
+
+		if (provided != NULL) {
+			const ucl_object_t *paths = NULL;
+
+			switch (provided_flags) {
+			case PKG_SHLIB_FLAGS_NONE:
+				paths = pkg_config_get("SHLIB_PROVIDE_PATHS_NATIVE");
+				break;
+			case PKG_SHLIB_FLAGS_COMPAT_32:
+				paths = pkg_config_get("SHLIB_PROVIDE_PATHS_COMPAT_32");
+				break;
+			case PKG_SHLIB_FLAGS_COMPAT_LINUX:
+				paths = pkg_config_get("SHLIB_PROVIDE_PATHS_COMPAT_LINUX");
+				break;
+			case (PKG_SHLIB_FLAGS_COMPAT_32 | PKG_SHLIB_FLAGS_COMPAT_LINUX):
+				paths = pkg_config_get("SHLIB_PROVIDE_PATHS_COMPAT_LINUX_32");
+				break;
+			default:
+				assert(0);
+			}
+			assert(paths != NULL);
+
+			if (lstat(fpath, &st) != 0) {
+				pkg_emit_errno("lstat() failed for", fpath);
+				continue;
+			}
+			/* If the corresponding PATHS option isn't set (i.e. an empty ucl array)
+			   don't do any filtering for backwards compatibility. */
+			if (ucl_array_size(paths) == 0 || pkg_match_paths_list(paths, file->path)) {
+				lstat(fpath, &st);
+				if (S_ISREG(st.st_mode)) {
+					pkg_addshlib_provided(pkg, provided, provided_flags);
+				} else {
+					tll_push_back(maybe_provided, pkg_shlib_name_with_flags(provided, provided_flags));
+				}
+			} else {
+				tll_push_back(internal_provided, pkg_shlib_name_with_flags(provided, provided_flags));
+			}
+			free(provided);
+		}
 	}
 
+	tll_foreach(maybe_provided, s) {
+		tll_foreach(internal_provided, ip) {
+			if (STREQ(s->item, ip->item)) {
+				pkg_addshlib_provided(pkg, s->item, PKG_SHLIB_FLAGS_NONE);
+				tll_remove_and_free(internal_provided, ip, free);
+			}
+		}
+		tll_remove_and_free(maybe_provided, s, free);
+	}
+	tll_free(maybe_provided);
 	/*
 	 * Do not depend on libraries that a package provides itself
 	 */
-	tll_foreach(pkg->shlibs_required, s)
-	{
-		if (stringlist_contains(&pkg->shlibs_provided, s->item)) {
-			pkg_debug(2,
-			    "remove %s from required shlibs as the "
-			    "package %s provides this library itself",
-			    s->item, pkg->name);
-			tll_remove_and_free(pkg->shlibs_required, s, free);
-			continue;
-		}
-		file = NULL;
-		while (pkg_files(pkg, &file) == EPKG_OK) {
-			if ((lib = strstr(file->path, s->item)) != NULL &&
-			    strlen(lib) == strlen(s->item) && lib[-1] == '/') {
-				pkg_debug(2,
-				    "remove %s from required shlibs as "
-				    "the package %s provides this file itself",
-				    s->item, pkg->name);
+	pkg_cleanup_shlibs_required(pkg, &internal_provided);
+	tll_free_and_free(internal_provided, free);
 
-				tll_remove_and_free(pkg->shlibs_required, s,
-				    free);
-				break;
-			}
+	tll_foreach(pkg->shlibs_provided, s) {
+		if (match_ucl_lists(s->item,
+		    pkg_config_get("SHLIB_PROVIDE_IGNORE_GLOB"),
+		    pkg_config_get("SHLIB_PROVIDE_IGNORE_REGEX"))) {
+			pkg_debug(2,
+			    "remove %s from provided shlibs for package %s as it "
+			    "is matched by SHLIB_PROVIDE_IGNORE_GLOB/REGEX.",
+			    s->item, pkg->name);
+			tll_remove_and_free(pkg->shlibs_provided, s, free);
+			continue;
 		}
 	}
 

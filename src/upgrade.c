@@ -246,6 +246,8 @@ exec_upgrade(int argc, char **argv)
 	int		 lock_type = PKGDB_LOCK_ADVISORY;
 	match_t		 match = MATCH_EXACT;
 	int		 done = 0;
+	int		 nbactions = 0;
+	int		 scriptnoexec = 0;
 	bool	rc = true;
 	pkg_flags	 f = PKG_FLAG_NONE | PKG_FLAG_PKG_VERSION_TEST;
 	c_charv_t	reponames;
@@ -257,6 +259,7 @@ exec_upgrade(int argc, char **argv)
 		{ "glob",		no_argument,		NULL,	'g' },
 		{ "case-insensitive",	no_argument,		NULL,	'i' },
 		{ "no-scripts",		no_argument,		NULL,	'I' },
+		{ "script-no-exec",	no_argument,		&scriptnoexec,	1 },
 		{ "dry-run",		no_argument,		NULL,	'n' },
 		{ "quiet",		no_argument,		NULL,	'q' },
 		{ "repository",		required_argument,	NULL,	'r' },
@@ -267,7 +270,6 @@ exec_upgrade(int argc, char **argv)
 		{ NULL,			0,			NULL,	0   },
 	};
 
-	nbactions = nbdone = 0;
 	vec_init(&reponames);
 
 	while ((ch = getopt_long(argc, argv, "+CfFgiInqr:Uxyv", longopts, NULL)) != -1) {
@@ -313,6 +315,10 @@ exec_upgrade(int argc, char **argv)
 			break;
 		case 'v':
 			f |= PKG_FLAG_UPGRADE_VULNERABLE;
+			break;
+		case 0:
+			if (scriptnoexec == 1)
+				f |= PKG_FLAG_NOEXEC;
 			break;
 		default:
 			usage_upgrade();

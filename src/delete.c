@@ -59,11 +59,14 @@ exec_delete(int argc, char **argv)
 	int		 i;
 	int		 lock_type = PKGDB_LOCK_ADVISORY;
 	int		 locked_pkgs = 0;
+	int		 nbactions = 0;
+	int		 scriptnoexec = 0;
 
 	struct option longopts[] = {
 		{ "all",			no_argument,	NULL,	'a' },
 		{ "case-sensitive",		no_argument,	NULL,	'C' },
 		{ "no-scripts",			no_argument,	NULL,	'D' },
+		{ "script-no-exec",		no_argument,	&scriptnoexec,	1 },
 		{ "force",			no_argument,	NULL,	'f' },
 		{ "glob",			no_argument,	NULL,	'g' },
 		{ "case-insensitive",		no_argument,	NULL,	'i' },
@@ -75,7 +78,6 @@ exec_delete(int argc, char **argv)
 		{ NULL,				0,		NULL,	0   },
 	};
 
-	nbactions = nbdone = 0;
 
 	while ((ch = getopt_long(argc, argv, "+aCDfginqRxy", longopts, NULL)) != -1) {
 		switch (ch) {
@@ -114,6 +116,10 @@ exec_delete(int argc, char **argv)
 			break;
 		case 'y':
 			yes = true;
+			break;
+		case 0:
+			if (scriptnoexec)
+				f |= PKG_FLAG_NOEXEC;
 			break;
 		default:
 			usage_delete();

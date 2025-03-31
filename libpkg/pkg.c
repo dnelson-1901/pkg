@@ -906,10 +906,8 @@ pkg_shlib_flags_from_abi(const struct pkg_abi *shlib_abi)
 	enum pkg_shlib_flags flags = PKG_SHLIB_FLAGS_NONE;
 
 	if (ctx.abi.os == PKG_OS_FREEBSD) {
-		if (shlib_abi->os == PKG_OS_LINUX &&
-		    pkg_object_bool(pkg_config_get("TRACK_LINUX_COMPAT_SHLIBS"))) {
+		if (shlib_abi->os == PKG_OS_LINUX && ctx.track_linux_compat_shlibs)
 			flags |= PKG_SHLIB_FLAGS_COMPAT_LINUX;
-		}
 
 		switch (ctx.abi.arch) {
 		case PKG_ARCH_AMD64:
@@ -968,14 +966,6 @@ pkg_addshlib_required(struct pkg *pkg, const char *name,
 
 	char *full_name = pkg_shlib_name_with_flags(name, flags);
 
-	if (match_ucl_lists(full_name,
-	    pkg_config_get("SHLIB_REQUIRE_IGNORE_GLOB"),
-	    pkg_config_get("SHLIB_REQUIRE_IGNORE_REGEX"))) {
-		dbg(3, "ignoring shlib %s required by package %s", full_name, pkg->name);
-		free(full_name);
-		return (EPKG_OK);
-	}
-
 	/* silently ignore duplicates in case of shlibs */
 	tll_foreach(pkg->shlibs_required, s) {
 		if (STREQ(s->item, full_name)) {
@@ -997,10 +987,6 @@ pkg_addshlib_provided(struct pkg *pkg, const char *name,
 {
 	assert(pkg != NULL);
 	assert(name != NULL && name[0] != '\0');
-
-	/* ignore files which are not starting with lib */
-	if (strncmp(name, "lib", 3) != 0)
-		return (EPKG_OK);
 
 	char *full_name = pkg_shlib_name_with_flags(name, flags);
 

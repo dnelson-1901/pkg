@@ -483,6 +483,9 @@ delete_process_provides(struct pkg_jobs *j, struct pkg *lp, const char *provide,
 	struct pkg_job_request *req;
 	bool ret = true;
 
+	/* check for pkgbase shlibs and provides */
+	if (pkghash_get(j->system_shlibs, provide) != NULL)
+		return (ret);
 	/* if something else to provide the same thing we can safely delete */
 	lit = provideq(j->db, provide);
 	if (lit == NULL)
@@ -1928,7 +1931,9 @@ pkg_jobs_solve(struct pkg_jobs *j)
 		 * provide system shlibs. */
 		if (!pkgdb_file_exists(j->db, "/usr/bin/uname")) {
 			ret = scan_system_shlibs(&j->system_shlibs, ctx.pkg_rootdir);
-			if (ret != EPKG_OK) {
+			if (ret == EPKG_NOCOMPAT32) {
+				j->ignore_compat32 = true;
+			} else if (ret != EPKG_OK) {
 				return (ret);
 			}
 		}
@@ -2094,6 +2099,8 @@ pkg_jobs_execute(struct pkg_jobs *j)
 	struct pkg *p;
 	int retcode = EPKG_FATAL;
 	pkg_plugin_hook_t pre, post;
+	size_t total_actions;
+	size_t current_action = 0;
 
 //j->triggers.cleanup = triggers_load(true);
 	if (j->type == PKG_JOBS_INSTALL) {
@@ -2127,9 +2134,11 @@ pkg_jobs_execute(struct pkg_jobs *j)
 	if (retcode != EPKG_OK)
 		return (retcode);
 
+	total_actions = tll_length(j->jobs);
 	tll_foreach(j->jobs, _p) {
 		struct pkg_solved *ps = _p->item;
 
+		pkg_emit_new_action(++current_action, total_actions);
 		switch (ps->type) {
 		case PKG_SOLVED_DELETE:
 			if ((j->flags & PKG_FLAG_FORCE) == 0) {

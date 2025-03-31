@@ -71,9 +71,9 @@ static struct commands {
 	{ "delete", "Deletes packages from the database and the system", exec_delete, usage_delete},
 	{ "fetch", "Fetches packages from a remote repository", exec_fetch, usage_fetch},
 	{ "help", "Displays help information", exec_help, usage_help},
-	{ "key", "Create or display signing key data", exec_key, usage_key},
 	{ "info", "Displays information about installed packages", exec_info, usage_info},
 	{ "install", "Installs packages from remote package repositories and local archives", exec_install, usage_install},
+	{ "key", "Create or display signing key data", exec_key, usage_key},
 	{ "lock", "Locks package against modifications or deletion", exec_lock, usage_lock},
 	{ "plugins", "Manages plugins and displays information about plugins", exec_plugins, usage_plugins},
 	{ "query", "Queries information about installed packages", exec_query, usage_query},
@@ -293,9 +293,6 @@ show_repository_info(void)
 static void
 show_version_info(int version)
 {
-	char *config;
-	pkg_kvl_t *lib;
-
 	if (version > 1)
 		printf("%-24s: ", "Version");
 
@@ -306,13 +303,16 @@ show_version_info(int version)
 
 	printf("%-24s: %s\n", "libpkg", pkg_libversion());
 
-	lib = pkg_external_libs_version();
-	for (size_t i = 0; i < lib->len; i++)
+	pkg_kvl_t *lib = pkg_external_libs_version();
+	for (size_t i = 0; i < lib->len; i++) {
 		printf("%-24s: %s\n", lib->d[i]->key, lib->d[i]->value);
+	}
+	free(lib);
 
-	config = pkg_config_dump();
+	char *config = pkg_config_dump();
 	printf("%s\n", config);
 	free(config);
+
 	show_plugin_info();
 	show_repository_info();
 
@@ -722,24 +722,25 @@ main(int argc, char **argv)
 		do_activation_test(argc);
 
 	if (argc >= 1 && STREQ(argv[0], "bootstrap")) {
-		int force = 0, yes = 0;
+		bool force = false;
+		bool yes = false;
 		while ((ch = getopt(argc, argv, "fy")) != -1) {
 			switch (ch) {
 			case 'f':
-				force = 1;
+				force = true;
 				break;
 			case 'y':
-				yes = 1;
+				yes = true;
 				break;
 			default:
 				errx(EXIT_FAILURE, "Invalid argument provided");
 				break;
 			}
 		}
-		if (yes == 0 && force == 0) {
+		if (!force) {
 			printf("pkg(8) already installed, use -f to force.\n");
 			exit(EXIT_SUCCESS);
-		} else if (force == 1) {
+		} else {
 			if (access("/usr/sbin/pkg", R_OK) == 0) {
 				/* Only 10.0+ supported 'bootstrap -f' */
 #if __FreeBSD_version < 1000502
@@ -821,4 +822,3 @@ main(int argc, char **argv)
 
 	return (ret);
 }
-

@@ -90,6 +90,7 @@ struct pkg_ctx ctx = {
 	.compression_level = -1,
 	.compression_threads = -1,
 	.defer_triggers = false,
+	.no_version_for_deps = false,
 };
 
 struct config_entry {
@@ -329,6 +330,11 @@ static struct config_entry c[] = {
 	},
 	{
 		PKG_BOOL,
+		"FORCE_CAN_REMOVE_VITAL",
+		"YES",
+	},
+	{
+		PKG_BOOL,
 		"PKG_CREATE_VERBOSE",
 		"NO",
 	},
@@ -425,6 +431,36 @@ static struct config_entry c[] = {
 	{
 		PKG_ARRAY,
 		"FILES_IGNORE_REGEX",
+		NULL,
+	},
+	{
+		PKG_ARRAY,
+		"SHLIB_PROVIDE_PATHS_NATIVE",
+		NULL,
+	},
+	{
+		PKG_ARRAY,
+		"SHLIB_PROVIDE_PATHS_COMPAT_32",
+		NULL,
+	},
+	{
+		PKG_ARRAY,
+		"SHLIB_PROVIDE_PATHS_COMPAT_LINUX",
+		NULL,
+	},
+	{
+		PKG_ARRAY,
+		"SHLIB_PROVIDE_PATHS_COMPAT_LINUX_32",
+		NULL,
+	},
+	{
+		PKG_ARRAY,
+		"SHLIB_PROVIDE_IGNORE_GLOB",
+		NULL,
+	},
+	{
+		PKG_ARRAY,
+		"SHLIB_PROVIDE_IGNORE_REGEX",
 		NULL,
 	},
 	{
@@ -1019,6 +1055,33 @@ config_validate_debug_flags(const ucl_object_t *o)
 	return (ret);
 }
 
+static bool
+config_validate_shlib_provide_paths() {
+	const char *config_options[] = {
+		"SHLIB_PROVIDE_PATHS_NATIVE",
+		"SHLIB_PROVIDE_PATHS_COMPAT_32",
+		"SHLIB_PROVIDE_PATHS_COMPAT_LINUX",
+		"SHLIB_PROVIDE_PATHS_COMPAT_LINUX_32",
+		NULL,
+	};
+	bool valid = true;
+	for (const char **option = config_options; *option != NULL; option++) {
+		const ucl_object_t *paths = pkg_config_get(*option);
+		const ucl_object_t *cur;
+		ucl_object_iter_t it = NULL;
+		while ((cur = ucl_object_iterate(paths, &it, true))) {
+			const char *path = ucl_object_tostring(cur);
+			if (path[0] != '/') {
+				pkg_emit_error("Invalid value for config option %s, "
+				    "'%s' is not an absolute path.",
+				    *option, path);
+				valid = false;
+			}
+		}
+	}
+	return valid;
+}
+
 /* Parses ABI_FILE, ABI, ALTABI, and OSVERSION from the given ucl file and sets
  * the values in the environment. These values must be parsed separately from
  * the rest of the config because they are made available as variable expansions
@@ -1455,6 +1518,11 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	ucl_object_unref(obj);
 	ucl_parser_free(p);
 
+	if (!config_validate_shlib_provide_paths()) {
+		err = EPKG_FATAL;
+		goto out;
+	}
+
 	{
 		/* Even though we no longer support setting ABI/ALTABI/OSVERSION
 		   in the pkg.conf config file, we still need to expose these
@@ -1502,6 +1570,8 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	ctx.compression_threads = pkg_object_int(pkg_config_get("COMPRESSION_THREADS"));
 	ctx.archive_symlink = pkg_object_bool(pkg_config_get("ARCHIVE_SYMLINK"));
 	ctx.repo_accept_legacy_pkg = pkg_object_bool(pkg_config_get("REPO_ACCEPT_LEGACY_PKG"));
+	ctx.no_version_for_deps = (getenv("PKG_NO_VERSION_FOR_DEPS") != NULL);
+	ctx.track_linux_compat_shlibs = pkg_object_bool(pkg_config_get("TRACK_LINUX_COMPAT_SHLIBS"));
 
 	it = NULL;
 	object = ucl_object_find_key(config, "PKG_ENV");
@@ -1791,6 +1861,18 @@ pkg_set_debug_level(int64_t new_debug_level) {
 
 	ctx.debug_level = new_debug_level;
 	return old_debug_level;
+}
+
+int
+pkg_set_ignore_osversion(bool ignore) {
+	if (pkg_initialized())
+		return (EPKG_FATAL);
+
+	ucl_object_insert_key(config,
+		ucl_object_frombool(ignore),
+		"IGNORE_OSVERSION", sizeof("IGNORE_OSVERSION"), false);
+
+	return (EPKG_OK);
 }
 
 int

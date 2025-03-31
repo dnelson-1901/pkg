@@ -35,6 +35,8 @@ ATF_TC_WITHOUT_HEAD(random_suffix);
 ATF_TC_WITHOUT_HEAD(json_escape);
 ATF_TC_WITHOUT_HEAD(open_tempdir);
 ATF_TC_WITHOUT_HEAD(get_http_auth);
+ATF_TC_WITHOUT_HEAD(str_ends_with);
+ATF_TC_WITHOUT_HEAD(match_paths);
 
 ATF_TC_BODY(hidden_tempfile, tc) {
 	const char *filename = "plop";
@@ -126,6 +128,48 @@ ATF_TC_BODY(get_http_auth, tc) {
 	ATF_REQUIRE_STREQ(get_http_auth(), "user:passwd");
 }
 
+ATF_TC_BODY(str_ends_with, tc) {
+	ATF_REQUIRE(str_ends_with(NULL, NULL));
+	ATF_REQUIRE(!str_ends_with(NULL, "end"));
+	ATF_REQUIRE(!str_ends_with("a", "end"));
+	ATF_REQUIRE(str_ends_with("end", "end"));
+	ATF_REQUIRE(str_ends_with("backend", "end"));
+}
+
+ATF_TC_BODY(match_paths, tc) {
+	const char *paths[] = {
+		"////",
+		"/foo1",
+		"/foo2/",
+		"////foo3/bar",
+		"/foo4//bar",
+		"/foo5//////bar",
+		"//foo6//bar/",
+		"/foo7//////bar/",
+		"////foo8//bar///",
+		NULL,
+	};
+
+	ucl_object_t *list = ucl_object_typed_new(UCL_ARRAY);
+	for (size_t i = 0; paths[i] != NULL; i++) {
+		ucl_array_append(list, ucl_object_fromstring_common(paths[i], 0, 0));
+	}
+
+	ATF_REQUIRE(pkg_match_paths_list(list, "/target.so"));
+	ATF_REQUIRE(pkg_match_paths_list(list, "/foo1/whatever"));
+	ATF_REQUIRE(pkg_match_paths_list(list, "/foo2/thing.txt"));
+	ATF_REQUIRE(pkg_match_paths_list(list, "/foo3/bar/baz.so.1.1.1"));
+	ATF_REQUIRE(pkg_match_paths_list(list, "////foo4//bar/thingy"));
+	ATF_REQUIRE(pkg_match_paths_list(list, "/foo5//////bar/whatisit"));
+	ATF_REQUIRE(pkg_match_paths_list(list, "/foo6//bar/afile"));
+	ATF_REQUIRE(pkg_match_paths_list(list, "/foo7//////bar/foooo"));
+	ATF_REQUIRE(pkg_match_paths_list(list, "/foo8//bar///other"));
+
+	ATF_REQUIRE(!pkg_match_paths_list(list, "/notinpath/target.so"));
+	ATF_REQUIRE(!pkg_match_paths_list(list, "//////notinpath////other.so.1"));
+	ATF_REQUIRE(!pkg_match_paths_list(list, "/a/b/c/d/e/f/g"));
+}
+
 ATF_TP_ADD_TCS(tp)
 {
 	ATF_TP_ADD_TC(tp, hidden_tempfile);
@@ -133,6 +177,8 @@ ATF_TP_ADD_TCS(tp)
 	ATF_TP_ADD_TC(tp, json_escape);
 	ATF_TP_ADD_TC(tp, open_tempdir);
 	ATF_TP_ADD_TC(tp, get_http_auth);
+	ATF_TP_ADD_TC(tp, str_ends_with);
+	ATF_TP_ADD_TC(tp, match_paths);
 
 	return (atf_no_error());
 }

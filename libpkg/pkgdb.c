@@ -159,13 +159,25 @@ pkgdb_regex_delete(void *p)
 void
 pkgdb_now(sqlite3_context *ctx, int argc, __unused sqlite3_value **argv)
 {
+	int64_t t = (int64_t)time(NULL);
+	const char *date_env;
+
 	if (argc != 0) {
 		sqlite3_result_error(ctx, "Invalid usage of now() "
 		    "no arguments expected\n", -1);
 		return;
 	}
 
-	sqlite3_result_int64(ctx, (int64_t)time(NULL));
+	if ((date_env = getenv("PKG_INSTALL_EPOCH")) != NULL)
+	{
+		const char *errstr = NULL;
+		int64_t temp_t = strtonum(date_env, 0, INT64_MAX, &errstr);
+		if (errstr == NULL) {
+			t = temp_t;
+		}
+	}
+
+	sqlite3_result_int64(ctx, t);
 }
 
 static void
@@ -3017,4 +3029,54 @@ pkgdb_debug(int level, sqlite3_stmt *stmt)
 	str = sqlite3_expanded_sql(stmt);
 	dbg(level, "running: '%s'", str);
 	sqlite3_free(str);
+}
+
+bool
+pkgdb_is_shlib_provided(struct pkgdb *db, const char *req)
+{
+	sqlite3_stmt *stmt;
+	int ret;
+	bool found = false;
+
+	const char *sql = ""
+		"select package_id from pkg_shlibs_provided INNER JOIN shlibs "
+		"on pkg_shlibs_provided.shlib_id = shlibs.id "
+		"where shlibs.name=?1" ;
+
+	stmt = prepare_sql(db->sqlite, sql);
+	if (stmt == NULL)
+		return (false);
+
+	sqlite3_bind_text(stmt, 1, req, -1, SQLITE_TRANSIENT);
+	ret = sqlite3_step(stmt);
+	if (ret == SQLITE_ROW)
+		found = true;
+
+	sqlite3_finalize(stmt);
+	return (found);
+}
+
+bool
+pkgdb_is_provided(struct pkgdb *db, const char *req)
+{
+	sqlite3_stmt *stmt;
+	int ret;
+	bool found = false;
+
+	const char *sql = ""
+		"select package_id from pkg_provides INNER JOIN provides "
+		"on pkg_provides.provide_id = provides.id "
+		"where provides.provide = ?1" ;
+
+	stmt = prepare_sql(db->sqlite, sql);
+	if (stmt == NULL)
+		return (false);
+
+	sqlite3_bind_text(stmt, 1, req, -1, SQLITE_TRANSIENT);
+	ret = sqlite3_step(stmt);
+	if (ret == SQLITE_ROW)
+		found = true;
+
+	sqlite3_finalize(stmt);
+	return (found);
 }
