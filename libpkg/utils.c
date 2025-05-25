@@ -1133,6 +1133,7 @@ charv_search(charv_t *v, const char *el)
 {
 	if (v->len == 0)
 		return (NULL);
+	assert(v->unsorted == false);
 	const char **res = bsearch(&el, v->d, v->len, sizeof(char *), char_cmp);
 	if (res == NULL)
 		return (NULL);
