@@ -571,7 +571,7 @@ pkgdb_load_group(sqlite3 *sqlite, struct pkg *pkg)
 static int
 addshlib_required_raw(struct pkg *pkg, const char *name)
 {
-	vec_push(&pkg->shlibs_required, xstrdup(name));
+	charv_insert_sorted(&pkg->shlibs_required, xstrdup(name));
 	return (EPKG_OK);
 }
 
@@ -594,7 +594,7 @@ pkgdb_load_shlib_required(sqlite3 *sqlite, struct pkg *pkg)
 static int
 addshlib_provided_raw(struct pkg *pkg, const char *name)
 {
-	vec_push(&pkg->shlibs_provided, xstrdup(name));
+	charv_insert_sorted(&pkg->shlibs_provided, xstrdup(name));
 	return (EPKG_OK);
 }
 

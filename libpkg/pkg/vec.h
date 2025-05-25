@@ -11,11 +11,15 @@
 #include <stdlib.h>
 #include <stddef.h>
 
+/* All fields must default to 0 because memset is used in places to
+ * initialize it instead of calling vec_init(), which is why it's
+ * "unsorted", not "sorted".
+ */
 #define vec_t(Type) \
-  struct { Type *d; size_t len, cap; }
+  struct { Type *d; size_t len, cap; bool unsorted; }
 
 #define vec_init() \
-	{ .d = NULL, .len = 0, .cap = 0 }
+	{ .d = NULL, .len = 0, .cap = 0, .unsorted = false }
 
 #define vec_foreach(list, __i) \
 	for (size_t __i = 0; __i < (list).len; __i++)
@@ -46,7 +50,7 @@
 	(v)->d[(v)->len -1]
 
 #define vec_clear(v) \
-	(v)->len = 0
+	do { (v)->len = 0; (v)->unsorted = false; } while (0)
 
 #define vec_clear_and_free(v, free_func)       \
 	do {                                   \
@@ -54,7 +58,7 @@
 			free_func((v)->d[_i]); \
 			(v)->d[_i] = NULL;     \
 		}                              \
-		(v)->len = 0;                  \
+		vec_clear(v);                  \
 	} while (0)
 
 #define vec_push(v, _d)                                            \
@@ -69,6 +73,7 @@
 				abort();                              \
 		}                                                     \
 		(v)->d[(v)->len++] = (_d);                                  \
+		(v)->unsorted = true;                                 \
 	} while (0)                                                   \
 
 #define vec_pop(v) \
@@ -95,6 +100,7 @@
 			(v)->d[index] = vec_last(v); \
 		}                                    \
 		(v)->len--;                          \
+		(v)->unsorted = true;                \
 	} while (0)
 
 #define vec_len(v) \
@@ -105,6 +111,7 @@
 
 #define DEFINE_VEC_INSERT_SORTED_FUNC(type, _name, element_type, compare_func) \
 	element_type *_name##_insert_sorted(type *v, element_type el) { \
+		assert(v->unsorted == false); \
 		/* Verify if the element already exists */ \
 		if (v->len > 0) { \
 			element_type *found = bsearch(&el, v->d, v->len, sizeof(element_type), compare_func); \

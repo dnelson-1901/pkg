@@ -601,7 +601,7 @@ pkg_analyse_files(struct pkgdb *db __unused, struct pkg *pkg, const char *stage)
 					vec_push(&maybe_provided, pkg_shlib_name_with_flags(provided, provided_flags));
 				}
 			} else {
-				vec_push(&internal_provided, pkg_shlib_name_with_flags(provided, provided_flags));
+				charv_insert_sorted(&internal_provided, pkg_shlib_name_with_flags(provided, provided_flags));
 			}
 			free(provided);
 		}
