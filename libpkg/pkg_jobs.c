@@ -2098,7 +2098,8 @@ pkg_jobs_execute(struct pkg_jobs *j)
 				}
 				if (STREQ(p->name, "pkg") ||
 				    STREQ(p->name, "pkg-devel")) {
-					if (j->patterns->match == MATCH_ALL)
+					if (j->patterns == NULL ||
+					    j->patterns->match == MATCH_ALL)
 						continue;
 					pkg_emit_error(
 					    "Cannot delete pkg itself without force flag");
