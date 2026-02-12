@@ -1210,30 +1210,38 @@ pkg_jobs_need_upgrade(charv_t *system_shlibs, struct pkg *rp, struct pkg *lp)
 
 	size_t cntr = vec_len(&rp->shlibs_required);
 	size_t cntl = vec_len(&lp->shlibs_required);
-	if (cntr != cntl & system_shlibs == NULL) {
+	bool has_system_shlibs = vec_len(system_shlibs) > 0;
+
+	if (cntr != cntl && !has_system_shlibs) {
 		free(rp->reason);
 		rp->reason = xstrdup("required shared library changed");
 		return (true);
 	}
-	size_t i, j;
 
-	for (i = 0, j = 0; i < cntl && j < cntr; i++, j++) {
-		if (STREQ(lp->shlibs_required.d[i], rp->shlibs_required.d[j]))
-				continue;
-		if (system_shlibs != NULL) {
-			if (charv_search(system_shlibs, lp->shlibs_required.d[i]) != NULL) {
-				j--;
-				continue;
-			}
-			if (charv_search(system_shlibs, rp->shlibs_required.d[j]) != NULL) {
+	size_t i = 0, j = 0;
+	while (i < cntl || j < cntr) {
+		if (has_system_shlibs) {
+			while (i < cntl &&
+			    charv_search(system_shlibs,
+			    lp->shlibs_required.d[i]) != NULL)
 				i++;
-				continue;
-			}
+			while (j < cntr &&
+			    charv_search(system_shlibs,
+			    rp->shlibs_required.d[j]) != NULL)
+				j++;
 		}
-		free(rp->reason);
-		rp->reason = xstrdup("required shared library changed");
-		return (true);
-		break;
+		if (i >= cntl && j >= cntr)
+			break;
+		if (i >= cntl || j >= cntr ||
+		    !STREQ(lp->shlibs_required.d[i],
+		    rp->shlibs_required.d[j])) {
+			free(rp->reason);
+			rp->reason =
+			    xstrdup("required shared library changed");
+			return (true);
+		}
+		i++;
+		j++;
 	}
 	return (false);
 }
