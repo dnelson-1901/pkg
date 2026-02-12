@@ -619,10 +619,17 @@ is_orphaned(struct pkg_jobs *j, const char *uid)
 		return (true);
 	if (pkghash_get(j->notorphaned, uid) != NULL)
 		return (false);
-	if (_is_orphaned(j, uid)) {
-		pkghash_safe_add(j->orphaned, uid, NULL, NULL);
+	/*
+	 * Optimistically mark as orphaned before evaluating to break
+	 * infinite recursion when packages form dependency cycles
+	 * (e.g. A depends on B explicitly while B requires a shlib
+	 * provided by A). If _is_orphaned() returns false, we correct
+	 * the entry below.
+	 */
+	pkghash_safe_add(j->orphaned, uid, NULL, NULL);
+	if (_is_orphaned(j, uid))
 		return (true);
-	}
+	pkghash_del(j->orphaned, uid);
 	pkghash_safe_add(j->notorphaned, uid, NULL, NULL);
 	return (false);
 }
