@@ -769,12 +769,14 @@ create_regfile(struct pkg_add_context *context, struct pkg_file *f, struct archi
 				free(f->config->newcontent);
 		} else {
 			if (ftruncate(fd, archive_entry_size(ae)) == -1) {
+				close(fd);
 				close_tempdir(tmpdir);
-				pkg_errno("Fail to truncate file: %s", f->temppath);
+				pkg_fatal_errno("Fail to truncate file: %s", f->path);
 			}
 		}
 
 		if (!f->config && archive_read_data_into_fd(a, fd) != ARCHIVE_OK) {
+			close(fd);
 			close_tempdir(tmpdir);
 			pkg_emit_error("Fail to extract %s from package: %s",
 			    f->path, archive_error_string(a));
@@ -1944,7 +1946,7 @@ open_tempdir(struct pkg_add_context *context, const char *path)
 
 		strlcpy(t->name, walk, sizeof(t->name));
 		t->len = strlen(t->name);
-		t->fd = openat(rootfd, RELATIVE_PATH(t->temp), O_DIRECTORY);
+		t->fd = openat(rootfd, RELATIVE_PATH(t->temp), O_DIRECTORY|O_CLOEXEC);
 		if (t->fd == -1) {
 			pkg_errno("Fail to open directory %s", t->temp);
 			free(t);
