@@ -2029,31 +2029,31 @@ pkg_message_to_str(struct pkg *pkg)
 static int
 pkg_dep_cmp(struct pkg_dep *a, struct pkg_dep *b)
 {
-	return (STREQ(a->name, b->name));
+	return (strcmp(a->name, b->name));
 }
 
 static int
 pkg_file_cmp(struct pkg_file *a, struct pkg_file *b)
 {
-	return (STREQ(a->path, b->path));
+	return (strcmp(a->path, b->path));
 }
 
 static int
 pkg_dir_cmp(struct pkg_dir *a, struct pkg_dir *b)
 {
-	return (STREQ(a->path, b->path));
+	return (strcmp(a->path, b->path));
 }
 
 static int
 pkg_option_cmp(struct pkg_option *a, struct pkg_option *b)
 {
-	return (STREQ(a->key, b->key));
+	return (strcmp(a->key, b->key));
 }
 
 static int
 pkg_cf_cmp(struct pkg_config_file *a, struct pkg_config_file *b)
 {
-	return (STREQ(a->path, b->path));
+	return (strcmp(a->path, b->path));
 }
 
 void

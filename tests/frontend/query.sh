@@ -251,7 +251,7 @@ EOF
 		pkg create -M plop.ucl
 
 	atf_check \
-		-o inline:"${TMPDIR}/plop\n${TMPDIR}/bla\n${TMPDIR}/sym\n" \
+		-o inline:"${TMPDIR}/bla\n${TMPDIR}/plop\n${TMPDIR}/sym\n" \
 		-e empty \
 		-s exit:0 \
 		pkg query -F ./test-1.pkg '%Fp'

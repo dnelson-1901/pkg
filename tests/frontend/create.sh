@@ -561,14 +561,6 @@ categories [
     "test",
 ]
 files {
-    /testfile {
-        sum = "1\$e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
-        uname = "root";
-        gname = "wheel";
-        perm = "0644";
-        fflags = 0;
-        mtime = ${test_file_mtime};
-    }
     /sym-file {
         sum = "1\$a83552cc4e1e92707178239c630b7f05d51124ff2afa7c5595ff4e76cb96cfa4";
         uname = "root";
@@ -577,6 +569,14 @@ files {
         fflags = 0;
         symlink_target = "sym-target";
         mtime = ${sym_file_mtime};
+    }
+    /testfile {
+        sum = "1\$e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
+        uname = "root";
+        gname = "wheel";
+        perm = "0644";
+        fflags = 0;
+        mtime = ${test_file_mtime};
     }
 }
 EOF
@@ -760,7 +760,7 @@ EOF
 		-s exit:0 \
 		pkg create -o ${TMPDIR} -m . -p test.plist -r .
 
-	atf_check -o inline:"/file1\n/file3\n/file2\n" pkg info -ql -F test*.pkg
+	atf_check -o inline:"/file1\n/file2\n/file3\n" pkg info -ql -F test*.pkg
 	cat << EOF >> other-plist
 @include test.plist
 EOF
