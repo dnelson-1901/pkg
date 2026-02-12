@@ -1054,8 +1054,15 @@ pkg_extract_finalize(struct pkg *pkg, tempdirs_t *tempdirs)
 		}
 		if (renameat(pkg->rootfd, RELATIVE_PATH(f->temppath),
 		    pkg->rootfd, RELATIVE_PATH(fto)) == -1) {
-			pkg_fatal_errno("Fail to rename %s -> %s",
-			    f->temppath, fto);
+			char pkgnew[MAXPATHLEN + 8];
+			snprintf(pkgnew, sizeof(pkgnew), "%s.pkgnew", f->path);
+			if (renameat(pkg->rootfd, RELATIVE_PATH(f->temppath),
+			    pkg->rootfd, RELATIVE_PATH(pkgnew)) == -1) {
+				pkg_fatal_errno("Fail to rename %s -> %s",
+				    f->temppath, fto);
+			}
+			pkg_emit_notice("Cannot install %s, "
+					"installed as %s", f->path, pkgnew);
 		}
 
 		if (set_chflags(pkg->rootfd, fto, f->fflags) != EPKG_OK)
