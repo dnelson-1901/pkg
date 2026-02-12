@@ -237,13 +237,13 @@ url_decode(const char* src, size_t len)
 	char* dest = xmalloc(len + 1);
 	char* p = dest;
 	for (size_t i = 0; i < len; i++) {
-		if (src[i] == '%') {
-			if (i + 2 < len) {
-				int value;
-				sscanf(src + i + 1, "%2x", &value);
-				*p++ = (char)value;
-				i += 2;
-			}
+		if (src[i] == '%' && i + 2 < len &&
+		    isxdigit((unsigned char)src[i + 1]) &&
+		    isxdigit((unsigned char)src[i + 2])) {
+			int value;
+			sscanf(src + i + 1, "%2x", &value);
+			*p++ = (char)value;
+			i += 2;
 		} else {
 			*p++ = src[i];
 		}
