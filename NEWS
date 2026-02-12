@@ -1,3 +1,23 @@
+Changes from 2.5.99.0 to 2.5.99.1
+- Improve debug messages
+- create: use -t to specify the MANIFEST file timestamps
+- @dir: fix permission set via @mode
+- manpages: fix some spelling
+- progress:
+  * pad the counters to improve the output,
+  * remove the hash from the package names
+- update mumhash to latest version
+- fetch: add -s/--sumlnk option for mirror mode.
+- fetch: honor PKG_REPO_SYMLINK env var
+- triggers: only defer triggers which will fork/exec something
+- db: enable WAL for databases on local file systems
+- query: add support for evaluation of complex attributes
+- store ignored shlibs in manifest and db
+- Allow to define shlibs_{proviced,required}_ignore in the manifest directly
+- configure: use some C23 features to reduce the number of checks in the configure
+  script.
+- drastically reduce memory usage
+
 Changes from 2.4.99.2 to 2.5.99.0
 - fix regression while fetching
 
