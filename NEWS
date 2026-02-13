@@ -17,6 +17,15 @@ Changes from 2.5.99.0 to 2.5.99.1
 - configure: use some C23 features to reduce the number of checks in the configure
   script.
 - drastically reduce memory usage
+- fix an infinite loop on pkg autoremove
+- optimization: do not extract files if the installed oone is identical
+- if an extractions fails "file null mounted" complain and leave a file named
+  .pkgnew aside
+- upgrade multiple fixes on decision making which might have result in usesless
+  request to reinstall
+- pkg add ./file now check the version of the installed package if any and proposes
+  to upgrade if necessary
+- fix a regression in url_decode
 
 Changes from 2.4.99.2 to 2.5.99.0
 - fix regression while fetching
