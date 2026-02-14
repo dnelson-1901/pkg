@@ -2303,7 +2303,7 @@ pkg_jobs_fetch(struct pkg_jobs *j)
 			}
 			else {
 				retcode = pkg_repo_fetch_package(p);
-				if (pkg_repo_fetch_package(p) != EPKG_OK)
+				if (retcode != EPKG_OK)
 					return (retcode);
 			}
 		}
