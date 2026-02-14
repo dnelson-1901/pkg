@@ -577,13 +577,6 @@ do_extract_symlink(struct pkg_add_context *context, struct archive *a __unused,
 	fill_timespec_buf(aest, f->time);
 	archive_entry_fflags(ae, &f->fflags, &clear);
 
-	/* Skip if the symlinks are identical */
-	if (f->previous != PKG_FILE_NONE && f->sum != NULL &&
-	    pkg_checksum_validate_fileat(context->pkg->rootfd,
-	        RELATIVE_PATH(f->path), f->sum) == 0) {
-		return (EPKG_OK);
-	}
-
 	if (create_symlinks(context, f, archive_entry_symlink(ae), tempdirs) == EPKG_FATAL)
 		return (EPKG_FATAL);
 
@@ -836,7 +829,6 @@ do_extract_regfile(struct pkg_add_context *context, struct archive *a, struct ar
 {
 	struct pkg_file *f;
 	const struct stat *aest;
-	struct stat st;
 	unsigned long clear;
 
 	f = pkg_get_file(context->pkg, path);
@@ -856,17 +848,6 @@ do_extract_regfile(struct pkg_add_context *context, struct archive *a, struct ar
 	f->gname = xstrdup(archive_entry_gname(ae));
 	fill_timespec_buf(aest, f->time);
 	archive_entry_fflags(ae, &f->fflags, &clear);
-
-	/* Skip file if the source and targets are identical */
-	if (f->previous != PKG_FILE_NONE && f->sum != NULL &&
-	    !pkghash_get(context->pkg->config_files_hash, f->path) &&
-	    fstatat(context->pkg->rootfd, RELATIVE_PATH(f->path), &st,
-	        AT_SYMLINK_NOFOLLOW) == 0 &&
-	    S_ISREG(st.st_mode) && st.st_size == aest->st_size &&
-	    pkg_checksum_validate_fileat(context->pkg->rootfd,
-	        RELATIVE_PATH(f->path), f->sum) == 0) {
-		return (EPKG_OK);
-	}
 
 	if (create_regfile(context, f, a, ae, -1, local, tempdirs) == EPKG_FATAL)
 		return (EPKG_FATAL);
