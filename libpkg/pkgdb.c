@@ -1108,7 +1108,8 @@ retry:
 			return (EPKG_FATAL);
 		}
 
-		if (pkgdb_is_local_fs(dbdirfd)) {
+		if (pkgdb_is_local_fs(dbdirfd) &&
+		    !sqlite3_db_readonly(db->sqlite, "main")) {
 			sql_exec(db->sqlite, "PRAGMA journal_mode = WAL;");
 		}
 
