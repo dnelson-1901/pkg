@@ -1092,7 +1092,25 @@ retry:
 
 		pkgdb_syscall_overload();
 
-		if (sqlite3_open("/local.sqlite", &db->sqlite) != SQLITE_OK) {
+		/*
+		 * When we don't have write access, open with immutable=1
+		 * to handle databases that are in WAL journal mode.  WAL
+		 * requires -shm/-wal sidecar files which cannot be created
+		 * without write access, causing all queries to fail.
+		 * Immutable mode bypasses WAL/SHM entirely and reads
+		 * directly from the main database file.
+		 */
+		if (!create && faccessat(dbdirfd, "local.sqlite",
+		    W_OK, AT_EACCESS) != 0) {
+			ret = sqlite3_open_v2(
+			    "file:/local.sqlite?immutable=1",
+			    &db->sqlite,
+			    SQLITE_OPEN_READONLY | SQLITE_OPEN_URI,
+			    NULL);
+		} else {
+			ret = sqlite3_open("/local.sqlite", &db->sqlite);
+		}
+		if (ret != SQLITE_OK) {
 			ERROR_SQLITE(db->sqlite, "sqlite open");
 			pkgdb_nfs_corruption(db->sqlite);
 			pkgdb_close(db);
