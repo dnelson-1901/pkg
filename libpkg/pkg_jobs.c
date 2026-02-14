@@ -302,8 +302,11 @@ pkg_jobs_iter(struct pkg_jobs *j, void **iter,
 			return (false);
 	}
 
-	if (j->jobs.len == 0)
+	if (j->jobs.len == 0) {
+		free(t);
+		*iter = NULL;
 		return (false);
+	}
 	if (t->list == NULL) {
 		t->list = &j->jobs;
 		t->pos = 0;
