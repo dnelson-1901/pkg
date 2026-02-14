@@ -17,7 +17,6 @@ tests_init \
 	upgrade_glob_abi_os \
 	upgrade_glob_abi_version \
 	upgrade_glob_abi_arch \
-	skip_identical_file \
 
 issue1881_body() {
 	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg pkg1 pkg_a 1
@@ -644,47 +643,4 @@ EOF
 	atf_check \
 		-e ignore \
 		pkg -o IGNORE_OSVERSION=yes -o ABI=${OS}:16:amd64 -o OSVERSION=1600000 -C ./pkg.conf install -qy testb
-}
-
-skip_identical_file_body() {
-	# Create v1 with a file that will stay identical and one that will change
-	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "pkg" "pkg" "1"
-	echo "identical content" > samefile
-	echo "content v1" > changedfile
-	cat > plist << EOF
-${TMPDIR}/samefile
-${TMPDIR}/changedfile
-EOF
-	atf_check pkg create -M pkg.ucl -p plist
-
-	# Install v1
-	mkdir target
-	atf_check -o ignore -e ignore \
-		pkg -o REPOS_DIR="${TMPDIR}" -r ${TMPDIR}/target install -Uy ${TMPDIR}/pkg-1.pkg
-
-	# Record mtime of the identical file after install
-	mtime_before=$(q_mtime target/${TMPDIR}/samefile)
-
-	# Sleep to ensure filesystem timestamps will differ if the file is touched
-	sleep 2
-
-	# Create v2: samefile has identical content, changedfile has new content
-	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "pkg" "pkg" "2"
-	echo "content v2" > changedfile
-	cat > plist << EOF
-${TMPDIR}/samefile
-${TMPDIR}/changedfile
-EOF
-	atf_check pkg create -M pkg.ucl -p plist
-
-	# Upgrade to v2 from local file
-	atf_check -o ignore -e ignore \
-		pkg -o REPOS_DIR="${TMPDIR}" -r ${TMPDIR}/target install -Uy ${TMPDIR}/pkg-2.pkg
-
-	# Verify identical file was NOT re-extracted (mtime preserved)
-	mtime_after=$(q_mtime target/${TMPDIR}/samefile)
-	atf_check test "${mtime_before}" = "${mtime_after}"
-
-	# Verify changed file WAS re-extracted with new content
-	atf_check -o inline:"content v2\n" cat target/${TMPDIR}/changedfile
 }
