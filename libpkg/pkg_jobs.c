@@ -1518,6 +1518,8 @@ jobs_solve_full_upgrade(struct pkg_jobs *j)
 	assert(!j->solved);
 
 	candidates = pkg_jobs_find_upgrade_candidates(j);
+	if (candidates == NULL)
+		return (EPKG_FATAL);
 	jcount = candidates->len;
 
 	pkg_emit_progress_start("Checking for upgrades (%zd candidates)",
