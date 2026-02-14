@@ -1,3 +1,7 @@
+Changes from 2.5.99.1 to 2.5.99.2
+- pkgdb: skip WAL journal mode on read-only databases
+- pkgdb: open read-only databases in immutable mode
+
 Changes from 2.5.99.0 to 2.5.99.1
 - Improve debug messages
 - create: use -t to specify the MANIFEST file timestamps
@@ -26,6 +30,9 @@ Changes from 2.5.99.0 to 2.5.99.1
 - pkg add ./file now check the version of the installed package if any and proposes
   to upgrade if necessary
 - fix a regression in url_decode
+- fix reproducibility issue with the packages
+- fix a crash in pkg upgrade
+- fix a crash when ftruncate() fails
 
 Changes from 2.4.99.2 to 2.5.99.0
 - fix regression while fetching
