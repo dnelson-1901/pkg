@@ -77,8 +77,8 @@ pkg_jobs_universe_get_local(struct pkg_jobs_universe *universe,
 		} while (cur != unit);
 
 		if (found && found->pkg->type == PKG_INSTALLED) {
-			pkgdb_ensure_loaded(universe->j->db, unit->pkg, flag);
-			return (unit->pkg);
+			pkgdb_ensure_loaded(universe->j->db, found->pkg, flag);
+			return (found->pkg);
 		}
 	}
 
