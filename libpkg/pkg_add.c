@@ -512,6 +512,11 @@ create_symlinks(struct pkg_add_context *context, struct pkg_file *f, const char 
 		f->temppath = xstrdup(temppath);
 	}
 	if (tmpdir == NULL) {
+		if (f->temppath == NULL) {
+			pkg_emit_error("Fail to create symlink %s: "
+			    "no temporary path", f->path);
+			return (EPKG_FATAL);
+		}
 		fd = context->rootfd;
 		path = f->temppath;
 	} else {
@@ -628,6 +633,12 @@ create_hardlink(struct pkg_add_context *context, struct pkg_file *f, const char 
 		}
 	}
 	if (tmpdir == NULL) {
+		if (f->temppath == NULL) {
+			close_tempdir(tmpdir);
+			pkg_emit_error("Fail to create hardlink %s: "
+			    "no temporary path", f->path);
+			return (EPKG_FATAL);
+		}
 		pathto = f->temppath;
 		fd = context->rootfd;
 	} else {
@@ -636,6 +647,12 @@ create_hardlink(struct pkg_add_context *context, struct pkg_file *f, const char 
 	}
 
 	if (tmphdir == NULL) {
+		if (fh->temppath == NULL) {
+			close_tempdir(tmpdir);
+			pkg_emit_error("Fail to create hardlink %s -> %s: "
+			    "no temporary path for source", f->path, path);
+			return (EPKG_FATAL);
+		}
 		pathfrom = fh->temppath;
 		fdh = context->rootfd;
 	} else {
@@ -731,8 +748,11 @@ create_regfile(struct pkg_add_context *context, struct pkg_file *f, struct archi
 
 	if (tmpdir != NULL) {
 		fd = open_tempfile(tmpdir->fd, f->path + tmpdir->len, f->perm);
+	} else if (f->temppath != NULL) {
+		fd = open_tempfile(context->rootfd, f->temppath, f->perm);
 	} else {
-		fd = open_tempfile(context->rootfd, f->temppath,  f->perm);
+		pkg_emit_error("Fail to create temporary file for %s", f->path);
+		return (EPKG_FATAL);
 	}
 	if (fd == -2) {
 		close_tempdir(tmpdir);
