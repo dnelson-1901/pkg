@@ -1,3 +1,8 @@
+Changes from 2.5.99.2 to 2.5.99.3
+- extract: revert the extact optimization:
+  - on low ended hardware it may be actually worst
+  - it has too many side effects
+
 Changes from 2.5.99.1 to 2.5.99.2
 - pkgdb: skip WAL journal mode on read-only databases
 - pkgdb: open read-only databases in immutable mode
