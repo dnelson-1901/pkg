@@ -524,9 +524,6 @@ pkg_jobs_process_delete_request(struct pkg_jobs *j)
 	pkgs_t to_process = vec_init();
 	pkghash_it it;
 
-	if (force)
-		return (EPKG_OK);
-
 	/*
 	 * Need to add also all reverse deps here
 	 */
