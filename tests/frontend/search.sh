@@ -4,12 +4,31 @@
 
 tests_init \
 	search \
+	search_multiple_json_compact \
 	search_options \
 	search_comment_description
 
 search_body() {
 	export REPOS_DIR=/nonexistent
 	atf_check -e inline:"No active remote repositories configured.\n" -o empty -s exit:3 pkg -C '' -R '' search -e -Q comment -S name pkg
+}
+
+search_multiple_json_compact_body() {
+	atf_require python3 "Requires python3 to run this test"
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "testa" "testa" "1.0"
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "testb" "testb" "1.0"
+	atf_check -s exit:0 pkg create -o "${TMPDIR}/repo" -M ./testa.ucl
+	atf_check -s exit:0 pkg create -o "${TMPDIR}/repo" -M ./testb.ucl
+	atf_check -s exit:0 -o ignore pkg repo "${TMPDIR}/repo"
+	atf_check -s exit:0 mkdir reposconf
+	cat << EOF > reposconf/repos.conf
+repo: {
+	url: file://${TMPDIR}/repo,
+	enabled: true
+}
+EOF
+	atf_check -s exit:0 -o save:out.json pkg --repo-conf-dir "${TMPDIR}/reposconf" search -R --raw-format json-compact test
+	atf_check -s exit:0 -o ignore -e empty python3 -m json.tool out.json
 }
 
 search_options_body() {

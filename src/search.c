@@ -467,9 +467,22 @@ exec_search(int argc, char **argv)
 	}
 
 	flags = info_flags(opt, true);
+	if ((opt & INFO_RAW) &&
+		(opt & (INFO_RAW_JSON | INFO_RAW_JSON_COMPACT))) {
+			printf("[");
+	}
 	while ((ret = pkgdb_it_next(it, &pkg, flags)) == EPKG_OK) {
+		if ((opt & INFO_RAW) &&
+			(opt & (INFO_RAW_JSON | INFO_RAW_JSON_COMPACT)) &&
+			(atleastone)) {
+				printf(",");
+		}
 		print_info(NULL, pkg, opt);
 		atleastone = true;
+	}
+	if ((opt & INFO_RAW) &&
+		(opt & (INFO_RAW_JSON | INFO_RAW_JSON_COMPACT))) {
+			printf("]\n");
 	}
 
 	pkg_free(pkg);

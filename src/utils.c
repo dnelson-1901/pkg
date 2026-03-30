@@ -390,8 +390,6 @@ print_info(struct pkgdb *db, struct pkg * const pkg, uint64_t options)
 			outflags |= PKG_MANIFEST_EMIT_COMPACT;
 
 		pkg_emit_manifest_file(pkg, stdout, outflags);
-		if (outflags & PKG_MANIFEST_EMIT_COMPACT)
-			printf("\n");
 		return;
 	}
 
