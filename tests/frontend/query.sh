@@ -4,7 +4,8 @@
 
 tests_init \
 	query \
-	query_empty_multiline
+	query_empty_multiline \
+	query_purely_multiline_no_spurious
 
 query_body() {
 	touch plop
@@ -318,4 +319,36 @@ EOF
 		-o inline:"nolic \nwithlicense \n" \
 		-s exit:0 \
 		pkg query "%n %B"
+}
+
+query_purely_multiline_no_spurious_body() {
+	# A purely multiline format should not produce spurious lines
+	# for packages that have no matching multiline data (e.g., no deps).
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg nodeps nodeps 1
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg hasdeps hasdeps 1
+	cat >> hasdeps.ucl << EOF
+deps: {
+    nodeps: {
+        origin: "nodeps",
+        version: "1"
+    },
+}
+EOF
+
+	atf_check -o ignore pkg register -M nodeps.ucl
+	atf_check -o ignore pkg register -M hasdeps.ucl
+
+	# Purely multiline format: only hasdeps has deps, so nodeps
+	# must produce no output (no spurious " -" line)
+	atf_check \
+		-o inline:"nodeps nodeps-1\n" \
+		-s exit:0 \
+		pkg query "%do %dn-%dv"
+
+	# Mixed format (%n + multiline %d): both packages must appear,
+	# nodeps with empty dep fields via the fallback
+	atf_check \
+		-o inline:"hasdeps nodeps-1\nnodeps -\n" \
+		-s exit:0 \
+		pkg query "%n %dn-%dv"
 }
