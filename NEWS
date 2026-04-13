@@ -1,3 +1,8 @@
+Changes from 2.6.99.6 to 2.7.0
+- search: fix handling when search returns multiple JSON formatted results
+- fix overlinking on macOS
+- pkg.8: use % shell prompt for normal user
+
 Changes from 2.6.99.5 to 2.6.99.6
 - query: fix empty line output for purely multiline formats breaking poudriere
 - pkg-backup: make the compression configurable
