@@ -1342,6 +1342,9 @@ pkg_add_port(struct pkgdb *db, struct pkg *pkg, const char *input_path,
 	}
 
 	if (!testing) {
+		triggers_execute_perpackage(pkg, TRIGGER_PHASE_PRE_INSTALL,
+		    false);
+
 		/* Execute pre-install scripts */
 		pkg_lua_script_run(pkg, PKG_LUA_PRE_INSTALL, false);
 		pkg_script_run(pkg, PKG_SCRIPT_PRE_INSTALL, false, false);
@@ -1360,6 +1363,9 @@ pkg_add_port(struct pkgdb *db, struct pkg *pkg, const char *input_path,
 		/* Execute post-install scripts */
 		pkg_lua_script_run(pkg, PKG_LUA_POST_INSTALL, false);
 		pkg_script_run(pkg, PKG_SCRIPT_POST_INSTALL, false, false);
+
+		triggers_execute_perpackage(pkg, TRIGGER_PHASE_POST_INSTALL,
+		    false);
 	}
 
 	if (rc == EPKG_OK) {
