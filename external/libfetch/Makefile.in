@@ -17,6 +17,6 @@ LOCAL_CFLAGS=	-I$(top_srcdir)/compat \
 CFLAGS+=	@PKG_OPENSSL_CFLAGS@
 @endif
 
-VPATH=	$(top_srcdir)/external/libfetch
+VPATH=	$(top_srcdir)/external/fetch
 
 include $(MK)/static-lib.mk

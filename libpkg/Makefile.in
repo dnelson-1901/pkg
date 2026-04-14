@@ -76,7 +76,7 @@ LOCAL_CFLAGS=	-I$(top_srcdir)/compat \
 		-I$(top_srcdir)/external/liblua/ \
 		-I$(top_srcdir)/external/libder/libder \
 		-I$(top_srcdir)/external/libecc/include \
-		-I$(top_srcdir)/external/libfetch \
+		-I$(top_srcdir)/external/fetch \
 		-I$(top_srcdir)/libpkg/repo \
 		-I$(top_builddir)/libpkg/repo \
 		-I$(top_srcdir)/libpkg \
@@ -92,27 +92,28 @@ LOCAL_CFLAGS=	-I$(top_srcdir)/compat \
 
 LOCAL_LDFLAGS=	@waflags@ \
 		@REPOS_LDFLAGS@ \
-		-L$(top_builddir)/external/sqlite -lsqlite_pic \
+		-L$(top_builddir)/external/libsqlite -lsqlite_pic \
 		-L$(top_builddir)/external/libucl -lucl_pic \
-		-L$(top_builddir)/external/picosat -lpicosat_pic \
-		-L$(top_builddir)/external/linenoise -llinenoise_pic \
-		-L$(top_builddir)/external/yxml -lyxml_pic \
-		-L$(top_builddir)/external/blake2 -lblake2_pic \
+		-L$(top_builddir)/external/libpicosat -lpicosat_pic \
+		-L$(top_builddir)/external/liblinenoise -llinenoise_pic \
+		-L$(top_builddir)/external/libyxml -lyxml_pic \
+		-L$(top_builddir)/external/libblake2 -lblake2_pic \
 		-L$(top_builddir)/compat -lbsd_compat_pic \
 		-L$(top_builddir)/external/liblua -llua_pic \
 		-L$(top_builddir)/external/libder -lder_pic \
 		-L$(top_builddir)/external/libecc -lecc_pic \
 		-L$(top_builddir)/external/libfetch -lfetch_pic \
+
 		@nowaflags@ \
 		-lm
 
 STATIC_LIBS=	@REPOS_STATIC_LIBS@ \
-		$(top_builddir)/external/sqlite/libsqlite.a \
+		$(top_builddir)/external/libsqlite/libsqlite.a \
 		$(top_builddir)/external/libucl/libucl.a \
-		$(top_builddir)/external/picosat/libpicosat.a \
-		$(top_builddir)/external/linenoise/liblinenoise.a \
-		$(top_builddir)/external/yxml/libyxml.a \
-		$(top_builddir)/external/blake2/libblake2.a \
+		$(top_builddir)/external/libpicosat/libpicosat.a \
+		$(top_builddir)/external/liblinenoise/liblinenoise.a \
+		$(top_builddir)/external/libyxml/libyxml.a \
+		$(top_builddir)/external/libblake2/libblake2.a \
 		$(top_builddir)/external/liblua/liblua.a \
 		$(top_builddir)/compat/libbsd_compat.a \
 		$(top_builddir)/external/libder/libder.a \
@@ -142,7 +143,7 @@ LOCAL_LDFLAGS+=	-Wl,--version-script=$(top_srcdir)/libpkg/libpkg.ver
 @endif
 
 @if libelf-internal
-LOCAL_CFLAGS+= -I$(top_srcdir)/external/libelf
+LOCAL_CFLAGS+= -I$(top_srcdir)/external/elf
 STATIC_LIBS+=	$(top_builddir)/external/libelf/libelf.a
 LOCAL_LDFLAGS+=	-L$(top_builddir)/external/libelf -lelf
 @endif

@@ -337,23 +337,20 @@ if {[get-define CCACHE] ne {none}} {
 }
 
 make-config-header pkg_config.h -bare { DEFAULT_* }
-make-config-header external/sqlite/sqlite_generated.h
+make-config-header external/libsqlite/sqlite_generated.h
 foreach in [list mk/defs.mk.in libpkg/pkg.h.in libpkg/pkg.pc.in \
 	tests/frontend/test_environment.sh.in ] {
 	make-template $in
 	define-append CONF_GEN_FILES $in
 }
-make-template Makefile.autosetup Makefile
-define-append CONF_GEN_FILES Makefile.autosetup
-
-foreach dir [list external/blake2 external/picosat \
-	external/linenoise external/sqlite external/libfetch \
+foreach dir [list . external/libblake2 external/libpicosat \
+	external/liblinenoise external/libsqlite external/libfetch \
 	external compat libpkg libpkg/repo libpkg/repo/binary src \
 	external/libucl external/libelf tests docs \
-	external/liblua external/yxml scripts external/libder \
+	external/liblua external/libyxml scripts external/libder \
 	external/libecc] {
-	make-template $dir/Makefile.autosetup $dir/Makefile
-	define-append CONF_GEN_FILES $dir/Makefile.autosetup
+	make-template $dir/Makefile.in
+	define-append CONF_GEN_FILES $dir/Makefile.in
 }
 
 set out [open "configure_call" w+]

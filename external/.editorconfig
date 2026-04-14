@@ -1,5 +1,5 @@
 root = true
 
-[Makefile.autosetup]
+[Makefile.in]
 tab_width = 8
 indent_style = tab

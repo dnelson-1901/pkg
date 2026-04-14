@@ -110,7 +110,7 @@ ATF_TC_BODY(getfile, tc)
 	dprintf(stdin_pipe[1], "get /nonexistent 0\n");
 	mkdir("test", 0755);
 	dprintf(stdin_pipe[1], "get test 0\n");
-	dprintf(stdin_pipe[1], "get %s/Makefile.autosetup 0\n", atf_tc_get_config_var(tc, "srcdir"));
+	dprintf(stdin_pipe[1], "get %s/Makefile.in 0\n", atf_tc_get_config_var(tc, "srcdir"));
 	dprintf(stdin_pipe[1], "quit\n");
 	atf_utils_wait(p, 0, strout, "");
 }
