@@ -785,9 +785,6 @@ pkg_repo_binary_update(struct pkg_repo *repo, bool force)
 
 	sqlite3_initialize();
 
-	if (!pkg_repo_enabled(repo))
-		return (EPKG_OK);
-
 	pkg_debug(1, "PkgRepo: verifying update for %s", repo->name);
 
 	(void)snprintf(filename, sizeof(filename), "%s/%s",
