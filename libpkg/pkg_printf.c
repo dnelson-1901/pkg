@@ -465,24 +465,6 @@ static const struct pkg_printf_fmt	fmt[] = {
 		PP_PKG|PP_O,
 		&format_option_value,
 	},
-	[PP_PKG_OPTION_DEFAULT] =
-	{
-		'O',
-		'd',
-		false,
-		false,
-		PP_PKG|PP_O,
-		&format_option_default,
-	},
-	[PP_PKG_OPTION_DESCRIPTION] =
-	{
-		'O',
-		'D',
-		false,
-		false,
-		PP_PKG|PP_O,
-		&format_option_description,
-	},
 	[PP_PKG_OPTIONS] =
 	{
 		'O',
@@ -1510,28 +1492,6 @@ format_option_value(xstring *buf, const void *data, struct percent_esc *p)
 	const struct pkg_option	*option = data;
 
 	return (string_val(buf, option == NULL ? NULL: option->value, p));
-}
-
-/*
- * %Od -- Option default value.
- */
-xstring *
-format_option_default(xstring *buf, const void *data, struct percent_esc *p)
-{
-	const struct pkg_option	*option = data;
-
-	return (string_val(buf, option == NULL ? NULL: option->value, p));
-}
-
-/*
- * %OD -- Option description
- */
-xstring *
-format_option_description(xstring *buf, const void *data, struct percent_esc *p)
-{
-	const struct pkg_option	*option = data;
-
-	return (string_val(buf, option == NULL ? NULL: option->description, p));
 }
 
 /*

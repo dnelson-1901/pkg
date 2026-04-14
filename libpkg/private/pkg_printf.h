@@ -109,8 +109,6 @@ typedef enum _fmt_code_t {
 	PP_PKG_REPO_IDENT,
 	PP_PKG_OPTION_NAME,
 	PP_PKG_OPTION_VALUE,
-	PP_PKG_OPTION_DEFAULT,
-	PP_PKG_OPTION_DESCRIPTION,
 	PP_PKG_OPTIONS,
 	PP_PKG_ALTABI,
 	PP_PKG_REPO_PATH,
@@ -204,8 +202,6 @@ _static xstring *format_repo_ident(xstring *, const void *, struct percent_esc *
 _static xstring *format_options(xstring *, const void *, struct percent_esc *);
 _static xstring *format_option_name(xstring *, const void *, struct percent_esc *);
 _static xstring *format_option_value(xstring *, const void *, struct percent_esc *);
-_static xstring *format_option_default(xstring *, const void *, struct percent_esc *);
-_static xstring *format_option_description(xstring *, const void *, struct percent_esc *);
 _static xstring *format_repo_path(xstring *, const void *, struct percent_esc *);
 _static xstring *format_char_string(xstring *, const void *, struct percent_esc *);
 _static xstring *format_users(xstring *, const void *, struct percent_esc *);

@@ -38,8 +38,6 @@ enum {
 	MANIFEST_LICENSES,
 	MANIFEST_LUA_SCRIPTS,
 	MANIFEST_OPTIONS,
-	MANIFEST_OPTION_DEFAULTS,
-	MANIFEST_OPTION_DESCRIPTIONS,
 	MANIFEST_PROVIDES,
 	MANIFEST_REQUIRES,
 	MANIFEST_SCRIPTS,
@@ -144,12 +142,6 @@ static const struct pkg_manifest_key {
 			TYPE_SHIFT(UCL_STRING)|TYPE_SHIFT(UCL_INT), pkg_string},
 
 	{ "options",             MANIFEST_OPTIONS,
-			TYPE_SHIFT(UCL_OBJECT), pkg_obj},
-
-	{ "option_defaults",     MANIFEST_OPTION_DEFAULTS,
-			TYPE_SHIFT(UCL_OBJECT), pkg_obj},
-
-	{ "option_descriptions", MANIFEST_OPTION_DESCRIPTIONS,
 			TYPE_SHIFT(UCL_OBJECT), pkg_obj},
 
 	{ "origin",              offsetof(struct pkg, origin),
@@ -520,22 +512,6 @@ pkg_obj(struct pkg *pkg, const ucl_object_t *obj, uint32_t attr)
 			} else {
 				pkg_addoption(pkg, key, ucl_object_toboolean(cur) ? "on" : "off");
 			}
-			break;
-		case MANIFEST_OPTION_DEFAULTS:
-			if (cur->type != UCL_STRING)
-				pkg_emit_error("Skipping malformed option default %s",
-				    key);
-			else
-				pkg_addoption_default(pkg, key,
-				    ucl_object_tostring(cur));
-			break;
-		case MANIFEST_OPTION_DESCRIPTIONS:
-			if (cur->type != UCL_STRING)
-				pkg_emit_error("Skipping malformed option description %s",
-				    key);
-			else
-				pkg_addoption_description(pkg, key,
-				    ucl_object_tostring(cur));
 			break;
 		case MANIFEST_SCRIPTS:
 			if (cur->type != UCL_STRING)

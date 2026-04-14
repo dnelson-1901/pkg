@@ -776,23 +776,6 @@ pkgdb_load_options(sqlite3 *sqlite, struct pkg *pkg)
 			"  ORDER BY option",
 			pkg_addoption,
 		},
-		{
-			"SELECT option, default_value"
-			"  FROM option"
-			"    JOIN pkg_option_default USING(option_id)"
-			"  WHERE package_id = ?1"
-			"  ORDER BY option",
-			pkg_addoption_default,
-		},
-		{
-			"SELECT option, description"
-			"  FROM option"
-			"    JOIN pkg_option_desc USING(option_id)"
-			"    JOIN option_desc USING(option_desc_id)"
-			"  WHERE package_id = ?1"
-			"  ORDER BY option",
-			pkg_addoption_description,
-		}
 	};
 	const char		 *opt_sql;
 	int			(*pkg_addtagval)(struct pkg *pkg,

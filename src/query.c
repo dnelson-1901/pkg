@@ -288,10 +288,6 @@ format_str(struct pkg *pkg, xstring *dest, const char *qstr, const void *data)
 					pkg_fprintf(dest->fp, "%On", data);
 				else if (qstr[0] == 'v')
 					pkg_fprintf(dest->fp, "%Ov", data);
-				else if (qstr[0] == 'd') /* default value */
-					pkg_fprintf(dest->fp, "%Od", data);
-				else if (qstr[0] == 'D') /* description */
-					pkg_fprintf(dest->fp, "%OD", data);
 				break;
 			case 'D':
 				pkg_fprintf(dest->fp, "%Dn", data);

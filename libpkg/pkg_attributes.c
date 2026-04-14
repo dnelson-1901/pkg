@@ -106,8 +106,6 @@ pkg_option_free(struct pkg_option *option)
 
 	free(option->key);
 	free(option->value);
-	free(option->default_value);
-	free(option->description);
 	free(option);
 }
 
