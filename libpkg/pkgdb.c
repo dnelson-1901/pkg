@@ -760,8 +760,11 @@ out:
 			return (EPKG_ENODB);
 		else if (errno == EACCES || errno == EROFS)
 			return (EPKG_ENOACCESS);
-		else
+		else {
+			pkg_emit_errno("Cannot access database",
+			    dbpath);
 			return (EPKG_FATAL);
+		}
 	}
 
 	return (EPKG_OK);
