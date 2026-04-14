@@ -384,6 +384,11 @@ static struct config_entry c[] = {
 	},
 	{
 		PKG_BOOL,
+		"IGNORE_OSMAJOR",
+		"NO",
+	},
+	{
+		PKG_BOOL,
 		"BACKUP_LIBRARIES",
 		"NO",
 	},
@@ -1007,6 +1012,10 @@ pkg_compiled_for_same_os_major(void)
 {
 #ifdef OSMAJOR
 	if (getenv("IGNORE_OSMAJOR") != NULL)
+		return (true);
+
+	if (pkg_initialized() &&
+	    pkg_object_bool(pkg_config_get("IGNORE_OSMAJOR")))
 		return (true);
 
 	return (ctx.abi.major == OSMAJOR);
