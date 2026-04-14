@@ -690,7 +690,7 @@ triggers_execute_perpackage(struct triggers *t, struct pkg *pkg,
 {
 	struct pkg_file *f = NULL;
 	struct pkg_dir *d = NULL;
-	pkghash *pkg_dirs_hash = NULL;
+	pkghash *pkg_paths_hash = NULL;
 	int ret = EPKG_OK;
 	trigger_t *triggers;
 
@@ -705,22 +705,23 @@ triggers_execute_perpackage(struct triggers *t, struct pkg *pkg,
 		return (EPKG_OK);
 	}
 
-	/* Build set of parent directories from the package's files */
+	/* Build set of file paths and their parent directories */
 	while (pkg_files(pkg, &f) == EPKG_OK) {
 		char *dir, *slash;
+		pkghash_safe_add(pkg_paths_hash, f->path, NULL, NULL);
 		dir = xstrdup(f->path);
 		slash = strrchr(dir, '/');
 		if (slash != NULL) {
 			*slash = '\0';
-			pkghash_safe_add(pkg_dirs_hash, dir, NULL, NULL);
+			pkghash_safe_add(pkg_paths_hash, dir, NULL, NULL);
 		}
 		free(dir);
 	}
 	while (pkg_dirs(pkg, &d) == EPKG_OK) {
-		pkghash_safe_add(pkg_dirs_hash, d->path, NULL, NULL);
+		pkghash_safe_add(pkg_paths_hash, d->path, NULL, NULL);
 	}
 
-	if (pkg_dirs_hash == NULL) {
+	if (pkg_paths_hash == NULL) {
 		vec_free_and_free(triggers, trigger_free);
 		free(triggers);
 		return (EPKG_OK);
@@ -730,7 +731,7 @@ triggers_execute_perpackage(struct triggers *t, struct pkg *pkg,
 	vec_foreach(*triggers, i) {
 		struct trigger *trig = triggers->d[i];
 		pkghash *local_matched = NULL;
-		pkghash_it it = pkghash_iterator(pkg_dirs_hash);
+		pkghash_it it = pkghash_iterator(pkg_paths_hash);
 
 		while (pkghash_next(&it))
 			trigger_check_match_local(trig, it.key, &local_matched);
@@ -752,7 +753,7 @@ triggers_execute_perpackage(struct triggers *t, struct pkg *pkg,
 		}
 	}
 
-	pkghash_destroy(pkg_dirs_hash);
+	pkghash_destroy(pkg_paths_hash);
 	vec_free_and_free(triggers, trigger_free);
 	free(triggers);
 	return (ret);
