@@ -8,7 +8,8 @@ tests_init \
 	depends \
 	multiple_upgrade \
 	per_library_packages \
-	per_library_delete
+	per_library_delete \
+	rootdir_default_path
 
 basic_body() {
 	atf_skip_on Darwin The macOS linker uses different flags
@@ -540,4 +541,51 @@ EOF
 	    pkg -r ${TMPDIR}/target info -e test-backup-libfoo.so.1
 	atf_check \
 	    pkg -r ${TMPDIR}/target info -e test-backup-libbar.so.1
+}
+
+rootdir_default_path_body()
+{
+	atf_skip_on Darwin The macOS linker uses different flags
+
+	atf_check touch empty.c
+	atf_check cc -shared -Wl,-soname=libtest.so.1 empty.c -o libtest.so.1
+
+	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
+	cat << EOF >> test.ucl
+files: {
+	${TMPDIR}/libtest.so.1: "",
+}
+EOF
+	atf_check pkg create -M test.ucl
+
+	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "2"
+	atf_check pkg create -M test.ucl
+
+	atf_check mkdir ${TMPDIR}/target ${TMPDIR}/reposconf
+
+	atf_check \
+	    pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target \
+	        install -qfy ${TMPDIR}/test-1.pkg
+
+	rm test-1.pkg
+	atf_check -o ignore pkg repo .
+	cat <<EOF > ${TMPDIR}/reposconf/repo.conf
+local: {
+	url: file://${TMPDIR},
+	enabled: true
+}
+EOF
+
+	default_path=$(pkg config BACKUP_LIBRARY_PATH)
+	atf_check -o ignore \
+	    pkg -o BACKUP_LIBRARIES=true \
+	        -o REPOS_DIR=${TMPDIR}/reposconf -r ${TMPDIR}/target \
+	        upgrade -y
+
+	atf_check test -f ${TMPDIR}/target${default_path}/libtest.so.1
+
+	atf_check test ! -d ${TMPDIR}/target${default_path}${default_path}
+
+	atf_check -o inline:"${default_path}/libtest.so.1\n" \
+	    pkg -r ${TMPDIR}/target query "%Fp" test-backup-libtest.so.1
 }
