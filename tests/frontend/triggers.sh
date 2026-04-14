@@ -14,7 +14,9 @@ tests_init \
 	perpackage_pre_install \
 	perpackage_post_install \
 	perpackage_pre_deinstall \
-	perpackage_post_deinstall
+	perpackage_post_deinstall \
+	perpackage_file_glob \
+	perpackage_file_regexp
 
 cleanup_lua_body() {
 	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1" "/"
@@ -323,4 +325,54 @@ EOF
 	    -o match:"upgrade: false" \
 	    -o match:"path: /usr/local/libdata/ldconfig" \
 	    pkg -o REPOS_DIR=/dev/null -o PKG_TRIGGERS_DIR="/trigger_dir" -r ${TMPDIR}/target delete -qy mylib
+}
+
+perpackage_file_glob_body() {
+	# Verify per-package triggers can match individual files, not just directories
+	mkdir -p target/trigger_dir/post_install/
+	cat << EOF >> target/trigger_dir/post_install/omf.ucl
+path_glob: [ "*/share/omf/*/*.omf" ]
+trigger: {
+	type: lua
+	sandbox: false
+	script: <<EOS
+for i, v in ipairs(arg) do
+	print("omf: " .. v)
+end
+EOS
+}
+EOF
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "myhelp" "myhelp" "1.0" "/usr/local"
+	mkdir -p usr/local/share/omf/myhelp/
+	echo "<omf/>" > usr/local/share/omf/myhelp/myhelp-C.omf
+	echo /usr/local/share/omf/myhelp/myhelp-C.omf > plist
+	atf_check pkg create -M myhelp.ucl -p plist -r .
+	unset PKG_TRIGGERS_DIR
+	atf_check -o match:"omf: /usr/local/share/omf/myhelp/myhelp-C.omf" \
+	    pkg -o REPOS_DIR=/dev/null -o PKG_TRIGGERS_DIR="/trigger_dir" -r ${TMPDIR}/target install -qfy ${TMPDIR}/myhelp-1.0.pkg
+}
+
+perpackage_file_regexp_body() {
+	# Verify per-package triggers can match individual files via regexp
+	mkdir -p target/trigger_dir/post_install/
+	cat << EOF >> target/trigger_dir/post_install/schemas.ucl
+path_regexp: [ ".*/etc/gconf/schemas/.*\\.schemas$" ]
+trigger: {
+	type: lua
+	sandbox: false
+	script: <<EOS
+for i, v in ipairs(arg) do
+	print("schema: " .. v)
+end
+EOS
+}
+EOF
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "myapp" "myapp" "2.0" "/usr/local"
+	mkdir -p usr/local/etc/gconf/schemas/
+	echo "<schema/>" > usr/local/etc/gconf/schemas/myapp.schemas
+	echo /usr/local/etc/gconf/schemas/myapp.schemas > plist
+	atf_check pkg create -M myapp.ucl -p plist -r .
+	unset PKG_TRIGGERS_DIR
+	atf_check -o match:"schema: /usr/local/etc/gconf/schemas/myapp.schemas" \
+	    pkg -o REPOS_DIR=/dev/null -o PKG_TRIGGERS_DIR="/trigger_dir" -r ${TMPDIR}/target install -qfy ${TMPDIR}/myapp-2.0.pkg
 }
