@@ -1468,7 +1468,13 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 			}
 			break;
 		case UCL_BOOLEAN:
-			o = ucl_object_fromstring_common(val, 0, UCL_STRING_PARSE_BOOLEAN);
+			o = ucl_object_fromstring_common(val, 0,
+			    UCL_STRING_PARSE_BOOLEAN|UCL_STRING_PARSE_INT);
+			if (o->type == UCL_INT) {
+				bool bval = ucl_object_toint(o) != 0;
+				ucl_object_unref(o);
+				o = ucl_object_frombool(bval);
+			}
 			if (o->type != UCL_BOOLEAN) {
 				pkg_emit_error("Invalid type for environment "
 				    "variable %s, got %s, while expecting a boolean",
