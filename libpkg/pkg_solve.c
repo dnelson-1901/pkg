@@ -1112,8 +1112,36 @@ reiterate:
 			}
 			xstring_free(sb);
 		} else {
-			pkg_emit_notice("Cannot solve problem using SAT solver, trying another plan");
 			var = &problem->variables[abs(*failed) - 1];
+
+			/* Check if the failure is caused by a vital package */
+			bool vital_found = false;
+			vec_rforeach(problem->rules, vj) {
+				struct pkg_solve_rule *vrule = problem->rules.d[vj];
+				if (vrule->reason != PKG_RULE_DEPEND)
+					continue;
+				/* In depend rules, the key element (inverse == -1) is the
+				 * dependent package, positive items are its dependencies */
+				struct pkg_solve_item *dep_pkg = NULL;
+				bool depends_on_var = false;
+				LL_FOREACH(vrule->items, item) {
+					if (item->inverse == -1)
+						dep_pkg = item;
+					else if (item->var->uid == var->uid ||
+					    STREQ(item->var->uid, var->uid))
+						depends_on_var = true;
+				}
+				if (dep_pkg != NULL && depends_on_var &&
+				    dep_pkg->var->unit->pkg->vital) {
+					pkg_emit_error("Cannot remove %s: "
+					    "required by vital package %s",
+					    var->uid, dep_pkg->var->uid);
+					vital_found = true;
+				}
+			}
+			if (!vital_found)
+				pkg_emit_notice("Cannot solve problem using SAT "
+				    "solver, trying another plan");
 
 			var->flags |= PKG_VAR_FAILED;
 
