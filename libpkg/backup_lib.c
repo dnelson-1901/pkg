@@ -133,6 +133,7 @@ backup_library(struct pkgdb *db, struct pkg *p, const char *path)
 {
 	const char *libname;
 	const char *bkpath;
+	const char *rootdir;
 	int from, to, backupdir;
 
 	if ((libname = strrchr(path, '/')) == NULL)
@@ -167,27 +168,48 @@ backup_library(struct pkgdb *db, struct pkg *p, const char *path)
 	}
 
 	/*
-	 * always overwrite the existing backup library, it might be older than
-	 * this one
+	 * Write to a temporary file and atomically rename into place.
+	 * This avoids corrupting or removing a backup library that may
+	 * still be in use if the process is interrupted.
 	 */
-	/* first always unlink to ensure we are not truncating a used library */
-	unlinkat(backupdir, libname, 0);
-	to = openat(backupdir, libname, O_EXCL|O_CREAT|O_WRONLY, 0644);
+	char tmpname[MAXPATHLEN];
+	char tmppath[MAXPATHLEN];
+	rootdir = ctx.pkg_rootdir != NULL ? ctx.pkg_rootdir : "";
+	snprintf(tmpname, sizeof(tmpname), ".%s.XXXXXX", libname);
+	snprintf(tmppath, sizeof(tmppath), "%s%s/%s", rootdir, bkpath, tmpname);
+	to = mkstemp(tmppath);
+	/* Update tmpname with the resolved XXXXXX suffix */
+	strlcpy(tmpname, strrchr(tmppath, '/') + 1, sizeof(tmpname));
 	if (to == -1) {
-		pkg_emit_errno("Unable to create the backup library", libname);
+		pkg_emit_errno("Unable to create temporary backup library",
+		    libname);
+		goto out;
+	}
+	if (fchmod(to, 0644) == -1) {
+		pkg_emit_errno("Unable to set permissions on backup library",
+		    libname);
 		goto out;
 	}
 
-	if (pkg_copy_file(from, to)) {
-		if (close(to) < 0) {
-			to = -1;
-			goto out;
-		}
-		close(from);
-		register_backup(db, p, backupdir, libname);
-		close(backupdir);
-		return;
+	if (!pkg_copy_file(from, to))
+		goto out;
+	if (close(to) < 0) {
+		to = -1;
+		goto out;
 	}
+	to = -1;
+	close(from);
+	from = -1;
+
+	if (renameat(backupdir, tmpname, backupdir, libname) == -1) {
+		pkg_emit_errno("Unable to rename backup library", libname);
+		unlinkat(backupdir, tmpname, 0);
+		goto out;
+	}
+
+	register_backup(db, p, backupdir, libname);
+	close(backupdir);
+	return;
 
 out:
 	pkg_emit_errno("Failed to backup the library", libname);
@@ -195,8 +217,10 @@ out:
 		close(backupdir);
 	if (from >= 0)
 		close(from);
-	if (to >= 0)
+	if (to >= 0) {
+		unlinkat(backupdir, tmpname, 0);
 		close(to);
+	}
 }
 
 /*
