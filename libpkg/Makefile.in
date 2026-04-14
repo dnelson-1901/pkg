@@ -103,7 +103,6 @@ LOCAL_LDFLAGS=	@waflags@ \
 		-L$(top_builddir)/external/libder -lder_pic \
 		-L$(top_builddir)/external/libecc -lecc_pic \
 		-L$(top_builddir)/external/libfetch -lfetch_pic \
-
 		@nowaflags@ \
 		-lm
 

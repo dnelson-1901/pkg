@@ -343,7 +343,10 @@ foreach in [list mk/defs.mk.in libpkg/pkg.h.in libpkg/pkg.pc.in \
 	make-template $in
 	define-append CONF_GEN_FILES $in
 }
-foreach dir [list . external/libblake2 external/libpicosat \
+make-template Makefile.in
+define-append CONF_GEN_FILES Makefile.in
+
+foreach dir [list external/libblake2 external/libpicosat \
 	external/liblinenoise external/libsqlite external/libfetch \
 	external compat libpkg libpkg/repo libpkg/repo/binary src \
 	external/libucl external/libelf tests docs \
