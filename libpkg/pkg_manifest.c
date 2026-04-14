@@ -936,7 +936,6 @@ pkg_emit_object(struct pkg *pkg, short flags)
 {
 	struct pkg_kv		*kv;
 	struct pkg_dep		*dep      = NULL;
-	struct pkg_option	*option   = NULL;
 	struct pkg_file		*file     = NULL;
 	struct pkg_dir		*dir      = NULL;
 	struct pkg_conflict	*conflict = NULL;
@@ -1132,13 +1131,14 @@ pkg_emit_object(struct pkg *pkg, short flags)
 
 	dbg(4, "Emitting options");
 	map = NULL;
-	while (pkg_options(pkg, &option) == EPKG_OK) {
-		dbg(4, "Emitting option: %s", option->value);
+	vec_foreach(pkg->options, oi) {
+		struct pkg_kv *opt = pkg->options.d[oi];
+		dbg(4, "Emitting option: %s", opt->value);
 		if (map == NULL)
 			map = ucl_object_typed_new(UCL_OBJECT);
 		ucl_object_insert_key(map,
-		    ucl_object_fromstring(option->value),
-		    option->key, 0, false);
+		    ucl_object_fromstring(opt->value),
+		    opt->key, 0, false);
 	}
 	if (map)
 		ucl_object_insert_key(top, map, "options", 7, false);

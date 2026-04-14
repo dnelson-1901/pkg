@@ -224,8 +224,7 @@ struct pkg {
 	struct pkg_file		*files;
 	pkghash			*dirhash;
 	struct pkg_dir		*dirs;
-	pkghash			*optionshash;
-	struct pkg_option	*options;
+	kvlist_t		 options;
 	charv_t		 users;
 	charv_t		 groups;
 	charv_t		 shlibs_required;
@@ -410,11 +409,6 @@ struct pkg_dir {
 	struct pkg_dir	*next, *prev;
 };
 
-struct pkg_option {
-	char	*key;
-	char	*value;
-	struct pkg_option *next, *prev;
-};
 
 struct http_mirror;
 
@@ -739,7 +733,6 @@ DEFINE_VEC_INSERT_SORTED_PROTO(kvlist_t, pkg_kv, struct pkg_kv *);
 void pkg_dep_free(struct pkg_dep *);
 void pkg_file_free(struct pkg_file *);
 void pkg_dir_free(struct pkg_dir *);
-void pkg_option_free(struct pkg_option *);
 void pkg_conflict_free(struct pkg_conflict *);
 void pkg_config_file_free(struct pkg_config_file *);
 

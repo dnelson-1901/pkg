@@ -100,10 +100,8 @@
  * N  pkg          Reponame
  *
  * O  pkg          List of options
- * On pkg_option   Option name (key)
- * Ov pkg_option   Option value
- * Od pkg_option   Option default value (if known)
- * OD pkg_option   Option description
+ * On pkg_kv       Option name (key)
+ * Ov pkg_kv       Option value
  *
  * P pkg
  * Q
@@ -1451,7 +1449,6 @@ format_options(xstring *buf, const void *data, struct percent_esc *p)
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
 		return (list_count(buf, pkg_list_count(pkg, PKG_OPTIONS), p));
 	else {
-		struct pkg_option	*opt = NULL;
 		int			 count;
 
 		set_list_defaults(p, "%On %Ov\n", "");
@@ -1459,13 +1456,13 @@ format_options(xstring *buf, const void *data, struct percent_esc *p)
 		count = 1;
 		fflush(p->sep_fmt->fp);
 		fflush(p->item_fmt->fp);
-		while (pkg_options(pkg, &opt) == EPKG_OK) {
+		vec_foreach(pkg->options, i) {
 			if (count > 1)
 				iterate_item(buf, pkg, p->sep_fmt->buf,
-					     opt, count, PP_O);
+					     pkg->options.d[i], count, PP_O);
 
 			iterate_item(buf, pkg, p->item_fmt->buf,
-				     opt, count, PP_O);
+				     pkg->options.d[i], count, PP_O);
 			count++;
 		}
 	}
@@ -1478,7 +1475,7 @@ format_options(xstring *buf, const void *data, struct percent_esc *p)
 xstring *
 format_option_name(xstring *buf, const void *data, struct percent_esc *p)
 {
-	const struct pkg_option	*option = data;
+	const struct pkg_kv	*option = data;
 
 	return (string_val(buf, option == NULL ? NULL: option->key, p));
 }
@@ -1489,7 +1486,7 @@ format_option_name(xstring *buf, const void *data, struct percent_esc *p)
 xstring *
 format_option_value(xstring *buf, const void *data, struct percent_esc *p)
 {
-	const struct pkg_option	*option = data;
+	const struct pkg_kv	*option = data;
 
 	return (string_val(buf, option == NULL ? NULL: option->value, p));
 }

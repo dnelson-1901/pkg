@@ -405,7 +405,7 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 {
 	xstring			*output;
 	struct pkg_dep		*dep    = NULL;
-	struct pkg_option	*option = NULL;
+	struct pkg_kv		*option = NULL;
 	struct pkg_file		*file   = NULL;
 	struct pkg_dir		*dir    = NULL;
 	const char		*str = NULL;

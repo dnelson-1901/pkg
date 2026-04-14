@@ -1001,7 +1001,7 @@ bool
 pkg_jobs_need_upgrade(charv_t *system_shlibs, struct pkg *rp, struct pkg *lp)
 {
 	int ret, ret1, ret2;
-	struct pkg_option *lo = NULL, *ro = NULL;
+	struct pkg_kv *lo = NULL, *ro = NULL;
 	struct pkg_dep *ld = NULL, *rd = NULL;
 	struct pkg_conflict *lc = NULL, *rc = NULL;
 

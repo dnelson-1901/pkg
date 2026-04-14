@@ -205,7 +205,6 @@ pkg_checksum_generate(struct pkg *pkg, char *dest, size_t destlen,
 	size_t blen;
 	struct kv *entries = NULL;
 	charv_t tofree = vec_init();
-	struct pkg_option *option = NULL;
 	struct pkg_dep *dep = NULL;
 	struct pkg_file *f = NULL;
 	bool is_group = false;
@@ -226,8 +225,9 @@ pkg_checksum_generate(struct pkg *pkg, char *dest, size_t destlen,
 
 	LL_APPEND(entries, kv_new("vital", pkg->vital ? "1" : "0"));
 
-	while (pkg_options(pkg, &option) == EPKG_OK) {
-		LL_APPEND(entries, kv_new(option->key, option->value));
+	vec_foreach(pkg->options, oi) {
+		LL_APPEND(entries, kv_new(pkg->options.d[oi]->key,
+		    pkg->options.d[oi]->value));
 	}
 
 	vec_foreach(pkg->shlibs_required, i) {

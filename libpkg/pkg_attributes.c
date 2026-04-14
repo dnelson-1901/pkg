@@ -96,20 +96,6 @@ pkg_script_get(struct pkg const * const p, pkg_script i)
 }
 
 /*
- * Option
- */
-void
-pkg_option_free(struct pkg_option *option)
-{
-	if (option == NULL)
-		return;
-
-	free(option->key);
-	free(option->value);
-	free(option);
-}
-
-/*
  * Conflicts
  */
 void

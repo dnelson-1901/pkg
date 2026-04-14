@@ -406,9 +406,27 @@ pkg_each(dirs, struct pkg_dir, dirs);
 pkg_each(files, struct pkg_file, files);
 pkg_each(deps, struct pkg_dep, depends);
 pkg_each(rdeps, struct pkg_dep, rdepends);
-pkg_each(options, struct pkg_option, options);
 pkg_each(conflicts, struct pkg_conflict, conflicts);
 pkg_each(config_files, struct pkg_config_file, config_files);
+
+int
+pkg_options(const struct pkg *p, struct pkg_kv **kv)
+{
+	assert(p != NULL);
+	if (p->options.len == 0)
+		return (EPKG_END);
+	if (*kv == NULL) {
+		*kv = p->options.d[0];
+		return (EPKG_OK);
+	}
+	vec_foreach(p->options, i) {
+		if (p->options.d[i] == *kv && i + 1 < p->options.len) {
+			*kv = p->options.d[i + 1];
+			return (EPKG_OK);
+		}
+	}
+	return (EPKG_END);
+}
 
 int
 pkg_adduser(struct pkg *pkg, const char *name)
@@ -785,33 +803,26 @@ pkg_appendscript(struct pkg *pkg, const char *cmd, pkg_script type)
 int
 pkg_addoption(struct pkg *pkg, const char *key, const char *value)
 {
-	struct pkg_option	*o = NULL;
+	struct pkg_kv *kv;
 
 	assert(pkg != NULL);
 	assert(key != NULL && key[0] != '\0');
 	assert(value != NULL && value[0] != '\0');
 
-	/* There might be a default or description for the option
-	   already, so we only count it as a duplicate if the value
-	   field is already set. Which implies there could be a
-	   default value or description for an option but no actual
-	   value. */
-
 	dbg(2,"adding options: %s = %s", key, value);
-	if (pkghash_get(pkg->optionshash, key) != NULL) {
+	kv = pkg_kv_new(key, value);
+	if (pkg_kv_insert_sorted(&pkg->options, kv) != NULL) {
+		pkg_kv_free(kv);
 		if (ctx.developer_mode) {
-			pkg_emit_error("duplicate options listing: %s, fatal (developer mode)", key);
+			pkg_emit_error("duplicate options listing: %s, "
+			    "fatal (developer mode)", key);
 			return (EPKG_FATAL);
 		} else {
-			pkg_emit_error("duplicate options listing: %s, ignoring", key);
+			pkg_emit_error("duplicate options listing: %s, "
+			    "ignoring", key);
 			return (EPKG_OK);
 		}
 	}
-	o = xcalloc(1, sizeof(*o));
-	o->key = xstrdup(key);
-	o->value = xstrdup(value);
-	pkghash_safe_add(pkg->optionshash, o->key, o, NULL);
-	DL_APPEND(pkg->options, o);
 
 	return (EPKG_OK);
 }
@@ -1064,7 +1075,7 @@ pkg_list_count(const struct pkg *pkg, pkg_list list)
 	case PKG_RDEPS:
 		return (pkghash_count(pkg->rdepshash));
 	case PKG_OPTIONS:
-		return (pkghash_count(pkg->optionshash));
+		return (vec_len(&pkg->options));
 	case PKG_FILES:
 		return (pkghash_count(pkg->filehash));
 	case PKG_DIRS:
@@ -1113,9 +1124,7 @@ pkg_list_free(struct pkg *pkg, pkg_list list)  {
 		pkg->flags &= ~PKG_LOAD_RDEPS;
 		break;
 	case PKG_OPTIONS:
-		DL_FREE(pkg->options, pkg_option_free);
-		pkghash_destroy(pkg->optionshash);
-		pkg->optionshash = NULL;
+		vec_free_and_free(&pkg->options, pkg_kv_free);
 		pkg->flags &= ~PKG_LOAD_OPTIONS;
 		break;
 	case PKG_FILES:
@@ -1997,12 +2006,6 @@ pkg_dir_cmp(struct pkg_dir *a, struct pkg_dir *b)
 }
 
 static int
-pkg_option_cmp(struct pkg_option *a, struct pkg_option *b)
-{
-	return (strcmp(a->key, b->key));
-}
-
-static int
 pkg_cf_cmp(struct pkg_config_file *a, struct pkg_config_file *b)
 {
 	return (strcmp(a->path, b->path));
@@ -2018,7 +2021,7 @@ pkg_lists_sort(struct pkg *p)
 	DL_SORT(p->depends, pkg_dep_cmp);
 	DL_SORT(p->files, pkg_file_cmp);
 	DL_SORT(p->dirs, pkg_dir_cmp);
-	DL_SORT(p->options, pkg_option_cmp);
+	pkg_kv_sort(&p->options);
 	DL_SORT(p->config_files, pkg_cf_cmp);
 }
 

@@ -139,7 +139,7 @@ pkg_repo_binary_add_pkg(struct pkg *pkg, sqlite3 *sqlite, bool forced)
 {
 	int			 ret;
 	struct pkg_dep		*dep      = NULL;
-	struct pkg_option	*option   = NULL;
+	struct pkg_kv		*option   = NULL;
 	struct pkg_kv		*kv;
 	const char		*arch;
 	int64_t			 package_id;

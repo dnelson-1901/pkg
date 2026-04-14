@@ -108,7 +108,6 @@ struct pkg_dep;
 struct pkg_conflict;
 struct pkg_file;
 struct pkg_dir;
-struct pkg_option;
 struct pkg_license;
 struct pkg_config_file;
 struct pkg_create;
@@ -702,7 +701,7 @@ int pkg_dirs(const struct pkg *pkg, struct pkg_dir **dir);
  * @param  option Must be set to NULL for the first call.
  * @return An error code.
  */
-int pkg_options(const struct pkg *, struct pkg_option **option);
+int pkg_options(const struct pkg *, struct pkg_kv **option);
 
 /**
  * Iterates over the conflicts registered in the package.

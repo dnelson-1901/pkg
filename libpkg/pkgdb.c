@@ -1736,7 +1736,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int forced,
 	struct pkg_dep		*dep = NULL;
 	struct pkg_file		*file = NULL;
 	struct pkg_dir		*dir = NULL;
-	struct pkg_option	*option = NULL;
+	struct pkg_kv		*option = NULL;
 	struct pkg_conflict	*conflict = NULL;
 	struct pkg_config_file	*cf = NULL;
 	struct pkgdb_it		*it = NULL;
