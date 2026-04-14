@@ -5,6 +5,7 @@
 tests_init \
 	update_error \
 	file_url \
+	update_disabled_repo \
 
 update_error_body() {
 
@@ -134,4 +135,47 @@ EOF
 		-s exit:1 \
 		pkg -R repos update
 
+}
+
+# Verify that "pkg update -r <repo>" works on a disabled repository,
+# as documented in the man page ("irrespective of the configured active
+# status").
+update_disabled_repo_body()
+{
+	# Create a package and repo
+	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
+	atf_check pkg create -M test.ucl
+	atf_check -o ignore pkg repo .
+
+	# Configure two repos: one enabled, one disabled
+	mkdir repos
+	cat <<EOF > repos/enabled.conf
+enabled_repo: {
+	url: "file://${TMPDIR}",
+	enabled: yes
+}
+EOF
+	cat <<EOF > repos/disabled.conf
+disabled_repo: {
+	url: "file://${TMPDIR}",
+	enabled: no
+}
+EOF
+
+	atf_check \
+		-o match:"Updating enabled_repo" \
+		-o not-match:"disabled_repo" \
+		-s exit:0 \
+		pkg -R repos update
+
+	atf_check \
+		-o match:"Updating disabled_repo" \
+		-o not-match:"enabled_repo" \
+		-s exit:0 \
+		pkg -R repos update -r disabled_repo
+
+	atf_check \
+		-o match:"No repositories are enabled" \
+		-s exit:1 \
+		pkg -R repos update -r nonexistent
 }

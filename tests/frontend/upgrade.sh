@@ -21,6 +21,7 @@ tests_init \
 	upgrade_autoremove_flag \
 	symlink_to_dir_upgrade \
 	newpkgversion_two_repos \
+	upgrade_disabled_repo \
 
 issue1881_body() {
 	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg pkg1 pkg_a 1
@@ -804,4 +805,40 @@ EOF
 		-e empty \
 		-s exit:0 \
 		pkg -C ./pkg.conf upgrade -y
+}
+
+# Verify that "pkg upgrade -r <repo>" works on a disabled repository,
+# as documented in the man page ("irrespective of the configured active
+# status").
+upgrade_disabled_repo_body()
+{
+	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
+	atf_check -o ignore pkg register -M test.ucl
+
+	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "2"
+	atf_check pkg create -M test.ucl
+	atf_check -o ignore pkg repo .
+
+	mkdir repos
+	cat <<EOF > repos/myrepo.conf
+myrepo: {
+	url: "file://${TMPDIR}",
+	enabled: no
+}
+EOF
+
+	atf_check \
+		-o match:"Updating myrepo" \
+		-s exit:0 \
+		pkg -R repos update -r myrepo
+
+	atf_check \
+		-o match:"Upgrading test from 1 to 2" \
+		-s exit:0 \
+		pkg -o REPOS_DIR="${TMPDIR}/repos" -o PKG_CACHEDIR="${TMPDIR}" \
+		upgrade -y -r myrepo
+
+	atf_check \
+		-o inline:"2\n" \
+		pkg query "%v" test
 }

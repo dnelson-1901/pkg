@@ -65,7 +65,7 @@ pkgcli_update(bool force, bool strict, c_charv_t *reponames)
 	    PKGDB_DB_REPO, reponames) == EPKG_ENOACCESS)
 		return (EPKG_OK);
 
-	if (pkg_repos_total_count() == 0) {
+	if (pkg_repos_total_count() == 0 && reponames->len == 0) {
 		fprintf(stderr, "No active remote repositories configured.\n");
 		return (EPKG_FATAL);
 	}

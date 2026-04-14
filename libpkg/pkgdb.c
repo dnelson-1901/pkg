@@ -831,26 +831,31 @@ pkgdb_access2(unsigned mode, unsigned database, c_charv_t *dbs)
 		struct pkg_repo	*r = NULL;
 
 		while (pkg_repos(&r) == EPKG_OK) {
-			/* Ignore any repos marked as inactive */
-			if (!pkg_repo_enabled(r))
-				continue;
-
 			if (dbs != NULL && dbs->len > 0 && r->name &&
 			    !c_charv_contains(dbs, r->name, true)) {
 				/* Skip what is not needed */
 				continue;
 			}
 
+			/* Ignore inactive repos unless explicitly requested */
+			if (!pkg_repo_enabled(r) &&
+			    (dbs == NULL || dbs->len == 0))
+				continue;
+
 			retval = r->ops->access(r, mode);
 			if (retval != EPKG_OK) {
 				if (retval == EPKG_ENODB &&
-				    (mode & PKGDB_MODE_READ) != PKGDB_MODE_READ) {
-					pkg_emit_error("Repository %s missing."
-						       " 'pkg update' required",
-					    r->name);
+				    (mode & PKGDB_MODE_CREATE) != 0) {
+					retval = EPKG_OK;
+				} else {
+					if (retval == EPKG_ENODB &&
+					    (mode & PKGDB_MODE_READ) !=
+					    PKGDB_MODE_READ)
+						pkg_emit_error("Repository %s "
+						    "missing. 'pkg update' "
+						    "required", r->name);
+					return (retval);
 				}
-
-				return (retval);
 			}
 		}
 	}
@@ -1174,7 +1179,8 @@ retry:
 	}
 
 	if (type == PKGDB_REMOTE || type == PKGDB_MAYBE_REMOTE) {
-		if (pkg_repos_activated_count() > 0) {
+		if (pkg_repos_activated_count() > 0 ||
+		    (reponames != NULL && reponames->len > 0)) {
 			if (reponames == NULL || reponames->len == 0) {
 				ret = pkgdb_open_repos(db, NULL);
 			} else {
