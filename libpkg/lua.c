@@ -190,6 +190,107 @@ lua_exec(lua_State *L)
 }
 
 int
+lua_exec_capture(lua_State *L)
+{
+	int r, pstat;
+	posix_spawn_file_actions_t action;
+	int stdout_pipe[2] = {-1, -1};
+	int stderr_pipe[2] = {-1, -1};
+	pid_t pid;
+	const char **argv;
+	int n = lua_gettop(L);
+	char buf[BUFSIZ];
+	ssize_t nread;
+	xstring *out = NULL;
+	xstring *err = NULL;
+
+	luaL_argcheck(L, n == 1, n > 1 ? 2 : n,
+	    "pkg.exec_capture takes exactly one argument");
+
+#ifdef HAVE_CAPSICUM
+	unsigned int capmode;
+	if (cap_getmode(&capmode) == 0 && capmode > 0) {
+		return (luaL_error(L,
+		    "pkg.exec_capture not available in sandbox"));
+	}
+#endif
+	if (pipe(stdout_pipe) < 0)
+		return (luaL_error(L, "pipe: %s", strerror(errno)));
+	if (pipe(stderr_pipe) < 0) {
+		close(stdout_pipe[0]);
+		close(stdout_pipe[1]);
+		return (luaL_error(L, "pipe: %s", strerror(errno)));
+	}
+
+	posix_spawn_file_actions_init(&action);
+	posix_spawn_file_actions_adddup2(&action, stdout_pipe[1],
+	    STDOUT_FILENO);
+	posix_spawn_file_actions_addclose(&action, stdout_pipe[0]);
+	posix_spawn_file_actions_adddup2(&action, stderr_pipe[1],
+	    STDERR_FILENO);
+	posix_spawn_file_actions_addclose(&action, stderr_pipe[0]);
+
+	argv = luaL_checkarraystrings(L, 1);
+	if (0 != (r = posix_spawnp(&pid, argv[0], &action, NULL,
+		(char*const*)argv, environ))) {
+		close(stdout_pipe[0]);
+		close(stdout_pipe[1]);
+		close(stderr_pipe[0]);
+		close(stderr_pipe[1]);
+		posix_spawn_file_actions_destroy(&action);
+		lua_pushnil(L);
+		lua_pushnil(L);
+		lua_pushinteger(L, r);
+		return 3;
+	}
+	posix_spawn_file_actions_destroy(&action);
+	close(stdout_pipe[1]);
+	close(stderr_pipe[1]);
+
+	out = xstring_new();
+	while ((nread = read(stdout_pipe[0], buf, sizeof(buf))) != 0) {
+		if (nread < 0) {
+			if (errno == EINTR)
+				continue;
+			break;
+		}
+		fwrite(buf, 1, nread, out->fp);
+	}
+	close(stdout_pipe[0]);
+
+	err = xstring_new();
+	while ((nread = read(stderr_pipe[0], buf, sizeof(buf))) != 0) {
+		if (nread < 0) {
+			if (errno == EINTR)
+				continue;
+			break;
+		}
+		fwrite(buf, 1, nread, err->fp);
+	}
+	close(stderr_pipe[0]);
+
+	while (waitpid(pid, &pstat, 0) == -1) {
+		if (errno != EINTR) {
+			xstring_free(out);
+			xstring_free(err);
+			lua_pushnil(L);
+			lua_pushnil(L);
+			lua_pushinteger(L, -1);
+			return 3;
+		}
+	}
+
+	fflush(out->fp);
+	fflush(err->fp);
+	lua_pushstring(L, out->buf);
+	lua_pushstring(L, err->buf);
+	lua_pushinteger(L, WEXITSTATUS(pstat));
+	xstring_free(out);
+	xstring_free(err);
+	return 3;
+}
+
+int
 lua_pkg_copy(lua_State *L)
 {
 	int n = lua_gettop(L);
