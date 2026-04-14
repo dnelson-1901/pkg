@@ -6,7 +6,9 @@ tests_init \
 	lock \
 	lock_delete \
 	lock_install_force \
-	unlock_all
+	unlock_all \
+	lock_already_locked \
+	unlock_already_unlocked
 
 lock_setup() {
 	for pkg in 'png' 'sqlite3' ; do
@@ -44,7 +46,7 @@ lock_body() {
 	atf_check \
 	    -o inline:"sqlite3-3.8.6: already locked\n" \
 	    -e empty \
-	    -s exit:1 \
+	    -s exit:0 \
 	    pkg lock -y sqlite3
 
 	atf_check \
@@ -62,7 +64,7 @@ lock_body() {
 	atf_check \
 	    -o inline:"sqlite3-3.8.6: already unlocked\n" \
 	    -e empty \
-	    -s exit:1 \
+	    -s exit:0 \
 	    pkg unlock -y sqlite3
 
 	atf_check \
@@ -179,4 +181,54 @@ unlock_all_body()
 	atf_check -o ignore pkg unlock -ay
 	atf_check -o inline:"No locked packages were found\n" \
 		-s exit:1 pkg lock -l
+}
+
+lock_already_locked_body()
+{
+	# Locking an already locked package should succeed (idempotent).
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
+	atf_check -o ignore pkg register -M test.ucl
+
+	atf_check -o ignore -s exit:0 pkg lock -y test
+
+	# Second lock: should succeed with informational message
+	atf_check \
+		-o inline:"test-1: already locked\n" \
+		-e empty \
+		-s exit:0 \
+		pkg lock -y test
+
+	# Quiet mode: no output at all, still success
+	atf_check \
+		-o empty \
+		-e empty \
+		-s exit:0 \
+		pkg lock -qy test
+
+	# Package should remain locked
+	atf_check \
+		-o match:"test-1" \
+		-s exit:0 \
+		pkg lock -l
+}
+
+unlock_already_unlocked_body()
+{
+	# Unlocking an already unlocked package should succeed (idempotent).
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
+	atf_check -o ignore pkg register -M test.ucl
+
+	# Package is unlocked by default; unlock should succeed
+	atf_check \
+		-o inline:"test-1: already unlocked\n" \
+		-e empty \
+		-s exit:0 \
+		pkg unlock -y test
+
+	# Quiet mode: no output at all, still success
+	atf_check \
+		-o empty \
+		-e empty \
+		-s exit:0 \
+		pkg unlock -qy test
 }
