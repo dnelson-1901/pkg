@@ -20,7 +20,8 @@ tests_init \
 	script_sample_exists \
 	script_stat \
 	script_arguments \
-	script_metalog_add
+	script_metalog_add \
+	script_exec_capture
 
 script_arguments_body() {
 	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1" "/"
@@ -779,4 +780,40 @@ OUTPUT="./plop type=file uname=root gname=wheel mode=440
 			install \
 			-qfy ${TMPDIR}/test-1.pkg
 	atf_check -o inline:"${OUTPUT}" cat METALOG
+}
+
+script_exec_capture_body() {
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1" "/"
+	cat << EOF >> test.ucl
+lua_scripts: {
+  post-install: [ <<EOS
+-- Test capturing stdout
+local out, err, code = pkg.exec_capture({"/bin/echo", "hello world"})
+pkg.print_msg("stdout:" .. out)
+pkg.print_msg("exitcode:" .. tostring(code))
+
+-- Test capturing stderr
+local out2, err2, code2 = pkg.exec_capture({"/bin/sh", "-c", "echo errmsg >&2"})
+pkg.print_msg("stderr:" .. err2)
+
+-- Test exit code
+local out3, err3, code3 = pkg.exec_capture({"/bin/sh", "-c", "exit 42"})
+pkg.print_msg("code:" .. tostring(code3))
+EOS
+, ]
+}
+EOF
+
+	atf_check \
+		-o empty \
+		-e empty \
+		-s exit:0 \
+		pkg create -M test.ucl
+
+	mkdir ${TMPDIR}/target
+	atf_check \
+		-o inline:"stdout:hello world\n\nexitcode:0\nstderr:errmsg\n\ncode:42\n" \
+		-e empty \
+		-s exit:0 \
+		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.pkg
 }

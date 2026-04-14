@@ -35,6 +35,7 @@ int lua_pkg_symlink(lua_State *L);
 int lua_prefix_path(lua_State *L);
 int lua_metalog_copy(lua_State *L);
 int lua_exec(lua_State *L);
+int lua_exec_capture(lua_State *L);
 void lua_override_ios(lua_State *L, bool);
 int lua_stat(lua_State *L);
 int lua_readdir(lua_State *L);

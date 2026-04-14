@@ -11,7 +11,7 @@
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
 .\"
-.Dd December 12, 2025
+.Dd April 14, 2026
 .Dt PKG-LUA-SCRIPT 5
 .Os
 .Sh NAME
@@ -165,6 +165,27 @@ expected in the following form:
 .Bro command, arg1, arg2, arg3, ...
 .Brc
 .Sc
+.Pp
+The command inherits the parent's standard output and standard error.
+.It Ft "stdout, stderr, exitcode" Fn pkg.exec_capture arguments
+Will execute the command
+.Ar arguments
+expected in the same form as
+.Fn pkg.exec ,
+capturing its standard output and standard error separately.
+.Pp
+Returns three values:
+.Va stdout
+(string containing the captured standard output),
+.Va stderr
+(string containing the captured standard error), and
+.Va exitcode
+(integer exit status of the command).
+If the command cannot be started, the first two return values are
+.Dv nil
+and
+.Va exitcode
+contains the error number.
 .It Ft res Fn pkg.readdir path
 Will return an
 .Va ipair

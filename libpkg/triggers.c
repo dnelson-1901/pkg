@@ -465,6 +465,7 @@ trigger_execute_lua_common(const char *script, bool sandbox, pkghash *args,
 			{ "stat", lua_stat },
 			{ "readdir", lua_readdir },
 			{ "exec", lua_exec },
+			{ "exec_capture", lua_exec_capture },
 			{ "symlink", lua_pkg_symlink },
 			{ NULL, NULL },
 		};
