@@ -313,7 +313,7 @@ exec_install(int argc, char **argv)
 			}
 			pkg_free(lpkg);
 		}
-		if (!suggested)
+		if (!suggested && !quiet)
 			printf("The most recent versions of packages are already installed\n");
 	}
 
