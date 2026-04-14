@@ -190,7 +190,6 @@ exec_info(int argc, char **argv)
 			break;
 		case 'e':
 			pkg_exists = true;
-			retcode = 1;
 			break;
 		case 'E': /* ports compatibility */
 			e_flag = true;
@@ -440,9 +439,10 @@ exec_info(int argc, char **argv)
 				gotone = false;
 				continue;
 			}
-			if (pkg_exists)
-				retcode = EXIT_SUCCESS;
-			else {
+			if (pkg_exists) {
+				if (retcode != EXIT_FAILURE)
+					retcode = EXIT_SUCCESS;
+			} else {
 				if (json_array) {
 					if (!json_first)
 						printf(",");
@@ -455,8 +455,8 @@ exec_info(int argc, char **argv)
 			retcode = EXIT_FAILURE;
 		}
 
-		if (retcode == EXIT_SUCCESS && !gotone && match != MATCH_ALL) {
-			if (!quiet)
+		if (!gotone && match != MATCH_ALL) {
+			if (!quiet && !pkg_exists)
 				warnx("No package(s) matching %s", argv[i]);
 			retcode = EXIT_FAILURE;
 		}

@@ -19,6 +19,7 @@ tests_init \
 	info_prefix \
 	info_quiet \
 	info_exists \
+	info_exists_multiple \
 	info_not_found \
 	info_no_args \
 	info_glob \
@@ -203,6 +204,33 @@ info_exists_body() {
 	atf_check \
 	    -s exit:1 \
 	    pkg info -e nonexistent
+}
+
+info_exists_multiple_body() {
+	setup_pkg
+
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "other" "other" "1"
+	atf_check -o ignore pkg register -M other.ucl
+
+	# Both exist: exit 0
+	atf_check \
+		-s exit:0 \
+		pkg info -e test other
+
+	# First exists, second doesn't: exit 1
+	atf_check \
+		-s exit:1 \
+		pkg info -e test nonexistent
+
+	# First doesn't exist, second does: exit 1
+	atf_check \
+		-s exit:1 \
+		pkg info -e nonexistent test
+
+	# Neither exists: exit 1
+	atf_check \
+		-s exit:1 \
+		pkg info -e nonexistent alsomissing
 }
 
 info_not_found_body() {
