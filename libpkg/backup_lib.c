@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2020 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2020-2026 Baptiste Daroussin <bapt@FreeBSD.org>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,6 +31,19 @@
 #include "private/event.h"
 #include "private/pkg.h"
 #include "private/pkgdb.h"
+
+static const char *
+backup_library_relative_path(void)
+{
+	const char *path = ctx.backup_library_path;
+
+	if (ctx.pkg_rootdir != NULL) {
+		size_t rootlen = strlen(ctx.pkg_rootdir);
+		if (strncmp(path, ctx.pkg_rootdir, rootlen) == 0)
+			path += rootlen;
+	}
+	return (path);
+}
 
 static int
 register_backup(struct pkgdb *db, struct pkg *orig, int fd, const char *libname)
@@ -92,7 +105,7 @@ register_backup(struct pkgdb *db, struct pkg *orig, int fd, const char *libname)
 		pkg_file_free(e->value);
 		pkghash_del(pkg->filehash, libname);
 	}
-	xasprintf(&lpath, "%s/%s", ctx.backup_library_path, libname);
+	xasprintf(&lpath, "%s/%s", backup_library_relative_path(), libname);
 	pkg_addfile(pkg, lpath, sum, false);
 	free(lpath);
 
@@ -119,6 +132,7 @@ static void
 backup_library(struct pkgdb *db, struct pkg *p, const char *path)
 {
 	const char *libname;
+	const char *bkpath;
 	int from, to, backupdir;
 
 	if ((libname = strrchr(path, '/')) == NULL)
@@ -128,6 +142,7 @@ backup_library(struct pkgdb *db, struct pkg *p, const char *path)
 
 	pkg_open_root_fd(p);
 	to = -1;
+	bkpath = backup_library_relative_path();
 
 	from = openat(p->rootfd, RELATIVE_PATH(path), O_RDONLY);
 	if (from == -1) {
@@ -135,19 +150,19 @@ backup_library(struct pkgdb *db, struct pkg *p, const char *path)
 		return;
 	}
 
-	if (mkdirat(p->rootfd, RELATIVE_PATH(ctx.backup_library_path), 0755) == -1) {
-		if (!mkdirat_p(p->rootfd, RELATIVE_PATH(ctx.backup_library_path))) {
+	if (mkdirat(p->rootfd, RELATIVE_PATH(bkpath), 0755) == -1) {
+		if (!mkdirat_p(p->rootfd, RELATIVE_PATH(bkpath))) {
 			pkg_emit_errno("Unable to create the library backup "
-			    "directory", ctx.backup_library_path);
+			    "directory", bkpath);
 			close(from);
 			return;
 		}
 	}
-	backupdir = openat(p->rootfd, RELATIVE_PATH(ctx.backup_library_path),
+	backupdir = openat(p->rootfd, RELATIVE_PATH(bkpath),
 	    O_DIRECTORY);
 	if (backupdir == -1) {
 		pkg_emit_error("Unable to open the library backup "
-		    "directory %s", ctx.backup_library_path);
+		    "directory %s", bkpath);
 		goto out;
 	}
 
