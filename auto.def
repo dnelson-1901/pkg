@@ -343,8 +343,8 @@ foreach in [list mk/defs.mk.in libpkg/pkg.h.in libpkg/pkg.pc.in \
 	make-template $in
 	define-append CONF_GEN_FILES $in
 }
-make-template Makefile.in
-define-append CONF_GEN_FILES Makefile.in
+make-template Makefile.autosetup Makefile
+define-append CONF_GEN_FILES Makefile.autosetup
 
 foreach dir [list external/libblake2 external/libpicosat \
 	external/liblinenoise external/libsqlite external/libfetch \
@@ -352,8 +352,8 @@ foreach dir [list external/libblake2 external/libpicosat \
 	external/libucl external/libelf tests docs \
 	external/liblua external/libyxml scripts external/libder \
 	external/libecc] {
-	make-template $dir/Makefile.in
-	define-append CONF_GEN_FILES $dir/Makefile.in
+	make-template $dir/Makefile.autosetup $dir/Makefile
+	define-append CONF_GEN_FILES $dir/Makefile.autosetup
 }
 
 set out [open "configure_call" w+]
