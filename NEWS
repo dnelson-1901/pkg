@@ -1,3 +1,16 @@
+Changes from 2.7.0 to 2.7.1
+- install: respect -q
+- version: add IGNORE_MAJOR to pkg.conf and document it
+- vital: now explicitly state the SAT solver issue are due to a vital package
+- pkg_config: accept int as boolean converted via != 0
+- lock: do not error in expected (un)lock state
+- backup_libraries: now fully respects rootdir
+- backup libraries: atomic replacement of the library
+- Honor --repository flag for disabled repos as documented
+- DB: loudly complain if the DB cannot be opened
+- lua: add pkg.exec_capture, a pkg.exec version capturing stdout/stderr
+- shlibs: also remove ignored shlibs provided from shlibs required
+
 Changes from 2.6.99.6 to 2.7.0
 - search: fix handling when search returns multiple JSON formatted results
 - fix overlinking on macOS
