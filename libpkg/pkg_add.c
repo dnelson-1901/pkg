@@ -1645,8 +1645,7 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 	/*
 	 * Execute per-package pre-install triggers
 	 */
-	if (t != NULL)
-		triggers_execute_perpackage(t, pkg, TRIGGER_PHASE_PRE_INSTALL, (local != NULL));
+	triggers_execute_perpackage(pkg, TRIGGER_PHASE_PRE_INSTALL, (local != NULL));
 
 	/* add the user and group if necessary */
 
@@ -1715,8 +1714,7 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 	/*
 	 * Execute per-package post-install triggers
 	 */
-	if (t != NULL)
-		triggers_execute_perpackage(t, pkg, TRIGGER_PHASE_POST_INSTALL, (local != NULL));
+	triggers_execute_perpackage(pkg, TRIGGER_PHASE_POST_INSTALL, (local != NULL));
 
 	/*
 	 * start the different related services if the users do want that

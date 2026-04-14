@@ -685,7 +685,7 @@ triggers_load_perpackage(trigger_phase_t phase)
  * by earlier packages in the same transaction are picked up.
  */
 int
-triggers_execute_perpackage(struct triggers *t, struct pkg *pkg,
+triggers_execute_perpackage(struct pkg *pkg,
     trigger_phase_t phase, bool upgrade)
 {
 	struct pkg_file *f = NULL;
@@ -693,9 +693,6 @@ triggers_execute_perpackage(struct triggers *t, struct pkg *pkg,
 	pkghash *pkg_paths_hash = NULL;
 	int ret = EPKG_OK;
 	trigger_t *triggers;
-
-	if (t == NULL)
-		return (EPKG_OK);
 
 	triggers = triggers_load_perpackage(phase);
 
