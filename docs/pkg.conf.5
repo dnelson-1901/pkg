@@ -218,6 +218,15 @@ Default: NO.
 Define User-agent to be sent to HTTP server when getting repository
 data.
 Default: pkg/<version>.
+.It Cm IGNORE_OSMAJOR: boolean [FreeBSD specific ]
+Ignore
+.Fx
+major OS version check.
+This suppresses the
+.Dq Major OS version upgrade detected
+warning, useful when building packages or images for a different OS version
+than the host.
+Default: NO.
 .It Cm IGNORE_OSVERSION: boolean [FreeBSD specific ]
 Ignore
 .Fx
