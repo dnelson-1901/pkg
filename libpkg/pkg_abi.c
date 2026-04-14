@@ -465,7 +465,8 @@ pkg_cleanup_shlibs_required(struct pkg *pkg, charv_t *internal_provided)
 	vec_foreach(pkg->shlibs_required, i) {
 		char *s = pkg->shlibs_required.d[i];
 		if (charv_search(&pkg->shlibs_provided, s) != NULL ||
-		    charv_search(internal_provided, s) != NULL) {
+		    charv_search(internal_provided, s) != NULL ||
+		    charv_search(&pkg->shlibs_provided_ignore, s) != NULL) {
 			pkg_debug(2,
 			    "remove %s from required shlibs as the "
 			    "package %s provides this library itself",
@@ -614,7 +615,9 @@ pkg_analyse_files(struct pkgdb *db __unused, struct pkg *pkg, const char *stage)
 					vec_push(&maybe_provided, pkg_shlib_name_with_flags(provided, provided_flags));
 				}
 			} else {
-				vec_push(&internal_provided, pkg_shlib_name_with_flags(provided, provided_flags));
+				char *ip = pkg_shlib_name_with_flags(provided, provided_flags);
+				if (charv_insert_sorted(&internal_provided, ip) != NULL)
+					free(ip);
 			}
 			free(provided);
 		}
