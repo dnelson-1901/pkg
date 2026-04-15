@@ -1,3 +1,8 @@
+Changes from 2.7.2 to 2.7.3
+- update: plug memory leak
+- upgrade: plug leak
+- upgrade: don't propose to downgrade to solve a provide/require
+
 Changes from 2.7.1 to 2.7.2
 - triggers: make the perpackage trigger per file instead of per directory
 - triggers: fix execution of per packages triggers on pkg add/register
