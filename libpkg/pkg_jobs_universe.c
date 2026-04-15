@@ -412,6 +412,26 @@ pkg_jobs_universe_handle_provide(struct pkg_jobs_universe *universe,
 				rpkg = NULL;
 				goto provide;
 			}
+			/*
+			 * Skip the remote package if its version is not
+			 * higher than the local already in the universe:
+			 * registering it as a provider would only offer a
+			 * downgrade candidate to the solver. This happens
+			 * when several configured repositories ship the
+			 * same package under different versions (e.g.
+			 * pkg from FreeBSD-ports vs from FreeBSD-base).
+			 */
+			if (unit->pkg->type == PKG_INSTALLED &&
+			    pkg_version_cmp(rpkg->version,
+			        unit->pkg->version) <= 0) {
+				dbg(4, "handle_provide: %s remote (%s) not "
+				    "newer than local (%s), skipping",
+				    rpkg->uid, rpkg->version,
+				    unit->pkg->version);
+				pkg_free(rpkg);
+				rpkg = NULL;
+				goto provide;
+			}
 			if (pkg_jobs_universe_process_item(universe, rpkg,
 			    &unit) != EPKG_OK) {
 				continue;
@@ -436,6 +456,19 @@ pkg_jobs_universe_handle_provide(struct pkg_jobs_universe *universe,
 				    rpkg->digest != NULL &&
 				    STREQ(npkg->digest, rpkg->digest)) {
 					dbg(4, "handle_provide: %s remote identical to local, skipping", rpkg->uid);
+					pkg_free(rpkg);
+					rpkg = NULL;
+					goto provide;
+				}
+				/* See comment above: avoid registering a
+				 * downgrade candidate when the local already
+				 * provides the requirement. */
+				if (pkg_version_cmp(rpkg->version,
+				    npkg->version) <= 0) {
+					dbg(4, "handle_provide: %s remote "
+					    "(%s) not newer than local (%s), "
+					    "skipping", rpkg->uid,
+					    rpkg->version, npkg->version);
 					pkg_free(rpkg);
 					rpkg = NULL;
 					goto provide;
