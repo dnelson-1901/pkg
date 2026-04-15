@@ -5,6 +5,8 @@
 tests_init \
 	query \
 	query_empty_multiline \
+	query_empty_provides_requires \
+	query_provides_requires \
 	query_purely_multiline_no_spurious
 
 query_body() {
@@ -319,6 +321,96 @@ EOF
 		-o inline:"nolic \nwithlicense \n" \
 		-s exit:0 \
 		pkg query "%n %B"
+}
+
+query_empty_provides_requires_body() {
+	# Regression: pkg query "%n-%v %y" used to segfault when the
+	# package had no provides (the multiline fallback passed NULL
+	# data to fprintf("%s", NULL)). Same for %Y / requires.
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg noprov noprov 1
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg withprov withprov 1
+	cat >> withprov.ucl << EOF
+provides: ["something"]
+requires: ["otherthing"]
+EOF
+
+	atf_check -o ignore pkg register -M noprov.ucl
+	atf_check -o ignore pkg register -M withprov.ucl
+
+	# %n %y: noprov must appear with empty provides field, no crash
+	atf_check \
+		-o inline:"noprov \nwithprov something\n" \
+		-s exit:0 \
+		pkg query "%n %y"
+
+	# Same for %Y / requires
+	atf_check \
+		-o inline:"noprov \nwithprov otherthing\n" \
+		-s exit:0 \
+		pkg query "%n %Y"
+
+	# Mixed name-version + multiline (the exact failing case)
+	atf_check \
+		-o inline:"noprov-1 \nwithprov-1 something\n" \
+		-s exit:0 \
+		pkg query "%n-%v %y"
+}
+
+query_provides_requires_body() {
+	# Nominal: package with multiple provides and requires entries.
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg multi multi 1
+	cat >> multi.ucl << EOF
+provides: ["foo", "bar", "baz"]
+requires: ["alpha", "beta"]
+EOF
+
+	atf_check -o ignore pkg register -M multi.ucl
+
+	# Bare %y: one line per provide
+	atf_check \
+		-o inline:"bar\nbaz\nfoo\n" \
+		-s exit:0 \
+		pkg query "%y" multi
+
+	# Bare %Y: one line per require
+	atf_check \
+		-o inline:"alpha\nbeta\n" \
+		-s exit:0 \
+		pkg query "%Y" multi
+
+	# Mixed name + provides: name repeated on each line
+	atf_check \
+		-o inline:"multi bar\nmulti baz\nmulti foo\n" \
+		-s exit:0 \
+		pkg query "%n %y" multi
+
+	# Mixed name-version + requires
+	atf_check \
+		-o inline:"multi-1 alpha\nmulti-1 beta\n" \
+		-s exit:0 \
+		pkg query "%n-%v %Y" multi
+
+	# Count of provides / requires
+	atf_check \
+		-o inline:"3\n" \
+		-s exit:0 \
+		pkg query "%#y" multi
+
+	atf_check \
+		-o inline:"2\n" \
+		-s exit:0 \
+		pkg query "%#Y" multi
+
+	# Boolean has-provides / has-requires
+	atf_check \
+		-o inline:"1\n" \
+		-s exit:0 \
+		pkg query "%?y" multi
+
+	atf_check \
+		-o inline:"1\n" \
+		-s exit:0 \
+		pkg query "%?Y" multi
 }
 
 query_purely_multiline_no_spurious_body() {
