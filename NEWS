@@ -1,3 +1,8 @@
+Changes from 2.7.1 to 2.7.2
+- triggers: make the perpackage trigger per file instead of per directory
+- triggers: fix execution of per packages triggers on pkg add/register
+- fetch: respect RFC 3986
+
 Changes from 2.7.0 to 2.7.1
 - install: respect -q
 - version: add IGNORE_MAJOR to pkg.conf and document it
