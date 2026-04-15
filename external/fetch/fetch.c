@@ -328,6 +328,82 @@ fetch_pctdecode(char *dst, const char *src, size_t dlen)
 }
 
 /*
+ * Apply RFC 3986 section 5.2.4 "Remove Dot Segments" in place.
+ * Collapses "." and ".." path segments so servers that refuse
+ * non-normalized request targets (e.g. paths containing "/./")
+ * do not reject otherwise valid requests.
+ */
+static void
+fetch_remove_dot_segments(char *path)
+{
+	char *in = path, *out = path;
+
+	while (*in != '\0') {
+		/*
+		 * A. Drop:
+		 *    - leading "../"
+		 *    - leading "./"
+		 */
+		if (strncmp(in, "../", 3) == 0) {
+			in += 3;
+			continue;
+		}
+		if (strncmp(in, "./", 2) == 0) {
+			in += 2;
+			continue;
+		}
+		/*
+		 * B. Replace:
+		 *    - leading "/./" -> "/"
+		 *    - ending "/." -> "/"
+		 */
+		if (strncmp(in, "/./", 3) == 0) {
+			in += 2;
+			continue;
+		}
+		if (in[0] == '/' && in[1] == '.' && in[2] == '\0') {
+			*out++ = '/';
+			break;
+		}
+		/*
+		 * C.
+		 *   - replace leading "/../" -> "/" and remove the last segment
+		 *   - drop the ending "/.." and remove the last segment
+		 */
+		if (strncmp(in, "/../", 4) == 0) {
+			in += 3;
+			while (out > path && *--out != '/')
+				/* remove segment */;
+			continue;
+		}
+		if (in[0] == '/' && in[1] == '.' && in[2] == '.' &&
+		    in[3] == '\0') {
+			in += 3;
+			while (out > path && *--out != '/')
+				/* remove segment */;
+			*out++ = '/';
+			break;
+		}
+		/*
+		 * D. Drop:
+		 *    - bare "."
+		 *    - base ".."
+		 */
+		if ((in[0] == '.' && in[1] == '\0') ||
+		    (in[0] == '.' && in[1] == '.' && in[2] == '\0'))
+			break;
+		/*
+		 * E. now move to th next segment copying to the output.
+		 */
+		if (*in == '/')
+			*out++ = *in++;
+		while (*in != '\0' && *in != '/')
+			*out++ = *in++;
+	}
+	*out = '\0';
+}
+
+/*
  * Split an URL into components. URL syntax is:
  * [method:/][/[user[:pwd]@]host[:port]/][document]
  * This almost, but not quite, RFC1738 URL syntax.
@@ -453,6 +529,7 @@ nohost:
 			}
 		}
 		*doc = '\0';
+		fetch_remove_dot_segments(u->doc);
 	} else if ((u->doc = strdup(p)) == NULL) {
 		fetch_syserr();
 		goto ouch;
