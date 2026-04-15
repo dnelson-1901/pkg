@@ -171,6 +171,7 @@ exec_update(int argc, char **argv)
 			break;
 		default:
 			usage_update();
+			vec_free(&reponames);
 			return (EXIT_FAILURE);
 		}
 	}
@@ -178,6 +179,7 @@ exec_update(int argc, char **argv)
 
 	if (argc != 0) {
 		usage_update();
+		vec_free(&reponames);
 		return (EXIT_FAILURE);
 	}
 
@@ -186,12 +188,16 @@ exec_update(int argc, char **argv)
 	if (ret == EPKG_ENOACCESS) {
 		warnx("Insufficient privileges to update the repository "
 		      "catalogue.");
+		vec_free(&reponames);
 		return (EXIT_FAILURE);
-	} else if (ret != EPKG_OK)
+	} else if (ret != EPKG_OK) {
+		vec_free(&reponames);
 		return (EXIT_FAILURE);
+	}
 
 	/* For pkg-update update op is strict */
 	ret = pkgcli_update(force, true, &reponames);
+	vec_free(&reponames);
 
 	return ((ret == EPKG_OK) ? EXIT_SUCCESS : EXIT_FAILURE);
 }
