@@ -325,10 +325,8 @@ format_str(struct pkg *pkg, xstring *dest, const char *qstr, const void *data)
 				pkg_fprintf(dest->fp, "%bn", data);
 				break;
 			case 'y':
-				fprintf(dest->fp, "%s", (const char *)data);
-				break;
 			case 'Y':
-				fprintf(dest->fp, "%s", (const char *)data);
+				fprintf(dest->fp, "%s", data == NULL ? "" : (const char *)data);
 				break;
 			case 'A':
 				qstr++;
