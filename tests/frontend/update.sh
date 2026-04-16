@@ -7,6 +7,7 @@ tests_init \
 	file_url \
 	update_disabled_repo \
 	update_all_disabled_repos \
+	update_override_disabled_repo \
 
 update_error_body() {
 
@@ -217,4 +218,42 @@ EOF
 		-o not-match:"repo2" \
 		-s exit:0 \
 		pkg -R repos update -r repo1
+}
+
+# Verify that "pkg update -r <repo>" works when a repository is initially
+# enabled in one config file and then overridden to disabled in another.
+# This is the scenario from GitHub issue #2643.
+update_override_disabled_repo_body()
+{
+	# Create a package and repo
+	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
+	atf_check pkg create -M test.ucl
+	atf_check -o ignore pkg repo .
+
+	# First config file defines the repo as enabled
+	mkdir repos
+	cat <<EOF > repos/base.conf
+myrepo: {
+	url: "file://${TMPDIR}",
+	enabled: yes
+}
+EOF
+	# Second config file overrides the repo to disabled
+	cat <<EOF > repos/override.conf
+myrepo: {
+	enabled: no
+}
+EOF
+
+	# Without -r, no repos should be updated
+	atf_check \
+		-o match:"No repositories are enabled" \
+		-s exit:1 \
+		pkg -R repos update
+
+	# With -r, the overridden-disabled repo should still be updated
+	atf_check \
+		-o match:"Updating myrepo" \
+		-s exit:0 \
+		pkg -R repos update -r myrepo
 }
