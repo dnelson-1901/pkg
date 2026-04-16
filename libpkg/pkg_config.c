@@ -616,7 +616,7 @@ disable_plugins_if_static(void)
 static void
 add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname, pkg_init_flags flags)
 {
-	const ucl_object_t *cur, *enabled, *env;
+	const ucl_object_t *cur, *env;
 	ucl_object_iter_t it = NULL;
 	struct pkg_kv *kv;
 	bool enable = true;
@@ -631,29 +631,15 @@ add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname, pkg_ini
 	dbg(1, "parsing repository object %s", rname);
 
 	env = NULL;
-	enabled = ucl_object_find_key(obj, "enabled");
-	if (enabled == NULL)
-		enabled = ucl_object_find_key(obj, "ENABLED");
-	if (enabled != NULL) {
-		enable = ucl_object_toboolean(enabled);
-		if (!enable && r != NULL) {
-			/*
-			 * We basically want to remove the existing repo r and
-			 * forget all stuff parsed
-			 */
-			dbg(1, "disabling repo %s", rname);
-			DL_DELETE(repos, r);
-			pkg_repo_free(r);
-			return;
-		}
-	}
 
 	while ((cur = ucl_iterate_object(obj, &it, true))) {
 		key = ucl_object_key(cur);
 		if (key == NULL)
 			continue;
 
-		if (STRIEQ(key, "url")) {
+		if (STRIEQ(key, "enabled")) {
+			enable = ucl_object_toboolean(cur);
+		} else if (STRIEQ(key, "url")) {
 			if (cur->type != UCL_STRING) {
 				pkg_emit_error("Expecting a string for the "
 				    "'%s' key of the '%s' repo",
