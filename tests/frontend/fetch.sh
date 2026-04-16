@@ -17,7 +17,8 @@ tests_init \
 	fetch_missing \
 	fetch_missing_dep \
 	fetch_missing_file \
-	fetch_missing_dep_file
+	fetch_missing_dep_file \
+	fetch_disabled_repo
 
 test_setup()
 {
@@ -146,5 +147,51 @@ fetch_missing_dep_file_body()
 		-e match:"cached package b-1: file://.*/b-1.pkg is missing from repo" \
 		-s not-exit:0 \
 		pkg -C "${CONF}/pkg.conf" fetch -r test -d -y test
+}
+
+# Verify that "pkg fetch -r <repo>" works on a disabled repository.
+fetch_disabled_repo_body()
+{
+	atf_check rm -rf ${TEST_ROOT}/*
+	atf_check mkdir -p ${CONF} ${REPOS} ${REPO} ${DB} ${CACHE} ${WORK}
+
+	cat > ${CONF}/pkg.conf << EOF
+PKG_CACHEDIR=${CACHE}
+PKG_DBDIR=${DB}
+REPOS_DIR=[
+	${REPOS}
+]
+EOF
+
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg ${WORK}/test test 1 /usr/local
+	atf_check \
+		-o ignore \
+		-e empty \
+		-s exit:0 \
+		pkg -C "${CONF}/pkg.conf" create -o ${REPO} -M ${WORK}/test.ucl
+
+	atf_check \
+		-o ignore \
+		-e empty \
+		-s exit:0 \
+		pkg -C "${CONF}/pkg.conf" repo ${REPO}
+
+	cat << EOF > ${REPOS}/disabled.conf
+disabled_repo: {
+	url: file:///${REPO},
+	enabled: no
+}
+EOF
+
+	atf_check \
+		-o match:"Updating disabled_repo" \
+		-s exit:0 \
+		pkg -C "${CONF}/pkg.conf" update -r disabled_repo
+
+	atf_check \
+		-o ignore \
+		-e empty \
+		-s exit:0 \
+		pkg -C "${CONF}/pkg.conf" fetch -U -r disabled_repo -y test
 }
 
