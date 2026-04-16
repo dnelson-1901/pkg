@@ -22,6 +22,7 @@ tests_init \
 	symlink_to_dir_upgrade \
 	newpkgversion_two_repos \
 	upgrade_disabled_repo \
+	upgrade_all_disabled_repos \
 
 issue1881_body() {
 	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg pkg1 pkg_a 1
@@ -837,6 +838,46 @@ EOF
 		-s exit:0 \
 		pkg -o REPOS_DIR="${TMPDIR}/repos" -o PKG_CACHEDIR="${TMPDIR}" \
 		upgrade -y -r myrepo
+
+	atf_check \
+		-o inline:"2\n" \
+		pkg query "%v" test
+}
+
+# Verify that "pkg upgrade -r <repo>" works when ALL repositories are disabled.
+upgrade_all_disabled_repos_body()
+{
+	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
+	atf_check -o ignore pkg register -M test.ucl
+
+	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "2"
+	atf_check pkg create -M test.ucl
+	atf_check -o ignore pkg repo .
+
+	mkdir repos
+	cat <<EOF > repos/repo1.conf
+repo1: {
+	url: "file://${TMPDIR}",
+	enabled: no
+}
+EOF
+	cat <<EOF > repos/repo2.conf
+repo2: {
+	url: "file://${TMPDIR}",
+	enabled: no
+}
+EOF
+
+	atf_check \
+		-o match:"Updating repo1" \
+		-s exit:0 \
+		pkg -R repos update -r repo1
+
+	atf_check \
+		-o match:"Upgrading test from 1 to 2" \
+		-s exit:0 \
+		pkg -o REPOS_DIR="${TMPDIR}/repos" -o PKG_CACHEDIR="${TMPDIR}" \
+		upgrade -y -r repo1
 
 	atf_check \
 		-o inline:"2\n" \

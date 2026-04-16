@@ -20,7 +20,8 @@ tests_init \
 	rquery_no_repo \
 	rquery_not_found \
 	rquery_multiple_pkgs \
-	rquery_multi_repo
+	rquery_multi_repo \
+	rquery_disabled_repo
 
 # Helper: set up a local file:// repo with rich packages
 setup_repo() {
@@ -434,4 +435,31 @@ EOF
 		-s exit:0 \
 		pkg -o REPOS_DIR="${TMPDIR}/reposconf" \
 		rquery -Ur repoB -a "%n"
+}
+
+# Verify that "rquery -r <repo>" works on a disabled repository.
+rquery_disabled_repo_body() {
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1.0" "/usr/local"
+	atf_check pkg create -o ${TMPDIR}/repo -M test.ucl
+	atf_check -o ignore pkg repo ${TMPDIR}/repo
+
+	mkdir -p ${TMPDIR}/reposconf
+	cat << EOF > ${TMPDIR}/reposconf/disabled.conf
+disabled_repo: {
+	url: file://${TMPDIR}/repo,
+	enabled: no
+}
+EOF
+
+	atf_check \
+		-o match:"Updating disabled_repo" \
+		-s exit:0 \
+		pkg -o REPOS_DIR="${TMPDIR}/reposconf" \
+		update -r disabled_repo
+
+	atf_check \
+		-o inline:"test\n" \
+		-s exit:0 \
+		pkg -o REPOS_DIR="${TMPDIR}/reposconf" \
+		rquery -Ur disabled_repo -a "%n"
 }

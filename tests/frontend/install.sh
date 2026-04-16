@@ -16,7 +16,8 @@ tests_init \
 	install_suggest_set_automatic \
 	install_no_suggest_when_flag_matches \
 	install_from_url \
-	install_automatic_flag_not_on_upgrade
+	install_automatic_flag_not_on_upgrade \
+	install_disabled_repo
 
 test_setup()
 {
@@ -580,6 +581,35 @@ EOF
 		-o match:"Installing test" \
 		-s exit:0 \
 		pkg -C ./pkg.conf install -y file://${TMPDIR}/repo/test-1.pkg
+
+	atf_check -s exit:0 pkg info -e test
+}
+
+# Verify that "pkg install -r <repo>" works on a disabled repository.
+install_disabled_repo_body()
+{
+	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1" "${TMPDIR}"
+	atf_check pkg create -M test.ucl
+	atf_check -o ignore pkg repo .
+
+	mkdir repos
+	cat <<EOF > repos/myrepo.conf
+myrepo: {
+	url: "file://${TMPDIR}",
+	enabled: no
+}
+EOF
+
+	atf_check \
+		-o match:"Updating myrepo" \
+		-s exit:0 \
+		pkg -R repos update -r myrepo
+
+	atf_check \
+		-o match:"Installing test" \
+		-s exit:0 \
+		pkg -o REPOS_DIR="${TMPDIR}/repos" -o PKG_CACHEDIR="${TMPDIR}" \
+		install -y -r myrepo test
 
 	atf_check -s exit:0 pkg info -e test
 }
