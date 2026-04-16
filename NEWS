@@ -1,3 +1,8 @@
+Changes from 2.7.3 to 2.7.4
+- query: fix %y/%Y
+- repo: do not delete repositories in overrides, simply disable them
+- Declare CheriBSD and CheriABI OS and ABI
+
 Changes from 2.7.2 to 2.7.3
 - update: plug memory leak
 - upgrade: plug leak
