@@ -829,6 +829,9 @@ pkg_repo_binary_update(struct pkg_repo *repo, bool force)
 	res = pkg_repo_binary_update_proceed(filename, repo, &t, force);
 	if (res != EPKG_OK && res != EPKG_UPTODATE) {
 		pkg_emit_notice("Unable to update repository %s", repo->name);
+		/* Remove potentially corrupted repo database so the
+		 * next update can start fresh */
+		unlink(filename);
 		goto cleanup;
 	}
 
