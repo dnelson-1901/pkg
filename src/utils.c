@@ -14,6 +14,11 @@
 
 #include <sys/param.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
+
+#ifdef HAVE_CAPSICUM
+#include <sys/capsicum.h>
+#endif
 
 #include <err.h>
 #include <fcntl.h>
@@ -31,7 +36,9 @@
 #include <errno.h>
 #include <pwd.h>
 #include <pkg.h>
+#include <pkghash.h>
 #include <xmalloc.h>
+#include <pkg/audit.h>
 
 #include <bsd_compat.h>
 
@@ -765,6 +772,7 @@ struct pkg_solved_display {
 	struct pkg *new, *old;
 	enum pkg_display_type display_type;
 	pkg_solved_t solved_type;
+	bool vulnerable;
 };
 
 typedef vec_t(struct pkg_solved_display *) pkg_solved_display_t;
@@ -794,6 +802,7 @@ set_jobs_summary_pkg(struct pkg_jobs *jobs, struct pkg *new_pkg,
 	it->new = new_pkg;
 	it->old = old_pkg;
 	it->solved_type = type;
+	it->vulnerable = false;
 	it->display_type = PKG_DISPLAY_MAX;
 
 	if (old_pkg != NULL && pkg_is_locked(old_pkg)) {
@@ -951,18 +960,24 @@ display_summary_item(struct pkg_solved_display *it, int64_t dlsize)
 		pkg_printf("\t%n: %v", it->new, it->new);
 		if (pkg_repos_total_count() > 1)
 			pkg_printf(" [%N]", it->new);
+		if (it->vulnerable)
+			printf(" (vulnerable!)");
 		putchar('\n');
 		break;
 	case PKG_DISPLAY_UPGRADE:
 		pkg_printf("\t%n: %v -> %v", it->new, it->old, it->new);
 		if (pkg_repos_total_count() > 1)
 			pkg_printf(" [%N]", it->new);
+		if (it->vulnerable)
+			printf(" (vulnerable!)");
 		putchar('\n');
 		break;
 	case PKG_DISPLAY_DOWNGRADE:
 		pkg_printf("\t%n: %v -> %v", it->new, it->old, it->new);
 		if (pkg_repos_total_count() > 1)
 			pkg_printf(" [%N]", it->new);
+		if (it->vulnerable)
+			printf(" (vulnerable!)");
 		putchar('\n');
 		break;
 	case PKG_DISPLAY_REINSTALL:
@@ -972,6 +987,8 @@ display_summary_item(struct pkg_solved_display *it, int64_t dlsize)
 			pkg_printf(" [%N]", it->new);
 		if (why != NULL)
 			printf(" (%s)", why);
+		if (it->vulnerable)
+			printf(" (vulnerable!)");
 		putchar('\n');
 		break;
 	case PKG_DISPLAY_FETCH:
@@ -1024,6 +1041,112 @@ namecmp(const void *a, const void *b)
 	return (pkg_namecmp(sda->new, sdb->new));
 }
 
+static pkghash *
+audit_check_summary(pkg_solved_display_t *disp)
+{
+	int pfd[2];
+	pid_t cld;
+	struct pkg_audit *audit;
+	struct pkg_audit_issues *issues;
+	pkghash *vulnerable = NULL;
+	FILE *in;
+	char *line = NULL;
+	size_t linecap = 0;
+	ssize_t linelen;
+
+	if (pipe(pfd) == -1)
+		return (NULL);
+
+	cld = fork();
+	switch (cld) {
+	case 0:
+		close(pfd[0]);
+		FILE *out = fdopen(pfd[1], "w");
+		if (out == NULL)
+			_exit(EXIT_FAILURE);
+
+		audit = pkg_audit_new();
+		if (pkg_audit_load(audit, NULL) != EPKG_OK) {
+			pkg_audit_free(audit);
+			fclose(out);
+			_exit(EXIT_SUCCESS);
+		}
+
+		pkg_drop_privileges();
+
+#ifdef HAVE_CAPSICUM
+#ifndef COVERAGE
+		if (cap_enter() < 0 && errno != ENOSYS) {
+			warn("cap_enter() failed");
+			pkg_audit_free(audit);
+			fclose(out);
+			_exit(EXIT_FAILURE);
+		}
+#endif
+#endif
+
+		if (pkg_audit_process(audit) == EPKG_OK) {
+			for (int type = 0; type < PKG_DISPLAY_MAX; type++) {
+				vec_foreach(disp[type], i) {
+					const char *name = NULL, *version = NULL;
+					issues = NULL;
+					if (pkg_audit_is_vulnerable(audit,
+					    disp[type].d[i]->new, &issues,
+					    true)) {
+						pkg_get(disp[type].d[i]->new,
+						    PKG_ATTR_NAME, &name);
+						pkg_get(disp[type].d[i]->new,
+						    PKG_ATTR_VERSION, &version);
+						if (name != NULL &&
+						    version != NULL)
+							fprintf(out, "%s-%s\n",
+							    name, version);
+					}
+					pkg_audit_issues_free(issues);
+				}
+			}
+		}
+
+		pkg_audit_free(audit);
+		fclose(out);
+		_exit(EXIT_SUCCESS);
+	case -1:
+		close(pfd[0]);
+		close(pfd[1]);
+		return (NULL);
+	default:
+		/* Parent */
+		close(pfd[1]);
+		in = fdopen(pfd[0], "r");
+		if (in == NULL) {
+			close(pfd[0]);
+			waitpid(cld, NULL, 0);
+			return (NULL);
+		}
+
+		vulnerable = pkghash_new();
+		while ((linelen = getline(&line, &linecap, in)) > 0) {
+			if (line[linelen - 1] == '\n')
+				line[linelen - 1] = '\0';
+			pkghash_safe_add(vulnerable, line, NULL, NULL);
+		}
+		free(line);
+		fclose(in);
+
+		while (waitpid(cld, NULL, 0) == -1) {
+			if (errno != EINTR)
+				break;
+		}
+
+		if (pkghash_count(vulnerable) == 0) {
+			pkghash_destroy(vulnerable);
+			return (NULL);
+		}
+
+		return (vulnerable);
+	}
+}
+
 int
 print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 {
@@ -1047,6 +1170,28 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 	while (pkg_jobs_iter(jobs, &iter, &new_pkg, &old_pkg, &type)) {
 		set_jobs_summary_pkg(jobs, new_pkg, old_pkg, type, &oldsize,
 		&newsize, &dlsize, disp, &sum);
+	}
+
+	/* Check packages against audit database for vulnerabilities */
+	pkghash *vulnerable = audit_check_summary(disp);
+	int vuln_count = 0;
+	if (vulnerable != NULL) {
+		for (type = 0; type < PKG_DISPLAY_MAX; type++) {
+			vec_foreach(disp[type], i) {
+				const char *n = NULL, *v = NULL;
+				char nv[BUFSIZ];
+				pkg_get(disp[type].d[i]->new, PKG_ATTR_NAME, &n);
+				pkg_get(disp[type].d[i]->new, PKG_ATTR_VERSION, &v);
+				if (n != NULL && v != NULL) {
+					snprintf(nv, sizeof(nv), "%s-%s", n, v);
+					if (pkghash_get(vulnerable, nv) != NULL) {
+						disp[type].d[i]->vulnerable = true;
+						vuln_count++;
+					}
+				}
+			}
+		}
+		pkghash_destroy(vulnerable);
 	}
 
 	for (type = 0; type < PKG_DISPLAY_MAX; type ++) {
@@ -1116,6 +1261,10 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 		    HN_AUTOSCALE, HN_IEC_PREFIXES);
 		printf("%s to be downloaded.\n", size);
 	}
+
+	if (vuln_count > 0)
+		printf("\nWARNING: %d package(s) have known vulnerabilities\n",
+		    vuln_count);
 
 	return (displayed);
 }

@@ -23,6 +23,7 @@ tests_init \
 	newpkgversion_two_repos \
 	upgrade_disabled_repo \
 	upgrade_all_disabled_repos \
+	upgrade_vulnerable
 
 issue1881_body() {
 	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg pkg1 pkg_a 1
@@ -882,4 +883,58 @@ EOF
 	atf_check \
 		-o inline:"2\n" \
 		pkg query "%v" test
+}
+
+upgrade_vulnerable_body()
+{
+	# Install v1 locally
+	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
+	atf_check -o ignore pkg register -M test.ucl
+
+	# Create v1.5 in repo
+	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1.5"
+	atf_check pkg create -M test.ucl
+	atf_check -o ignore pkg repo .
+
+	mkdir repoconf
+	cat <<EOF > repoconf/repo.conf
+local: {
+	url: "file://${TMPDIR}",
+	enabled: true
+}
+EOF
+
+	# vuln.xml: test >=1.0 <2.0 is vulnerable
+	cat > vuln.xml << 'VULN'
+<?xml version="1.0" encoding="utf-8"?>
+<vuxml xmlns="http://www.vuxml.org/apps/vuxml-1">
+  <vuln vid="test-vuln-001">
+    <topic>Test vulnerability</topic>
+    <affects>
+      <package>
+        <name>test</name>
+        <range>
+          <ge>1.0</ge>
+          <lt>2.0</lt>
+        </range>
+      </package>
+    </affects>
+    <references>
+      <cvename>CVE-2024-00001</cvename>
+    </references>
+  </vuln>
+</vuxml>
+VULN
+
+	atf_check -o ignore \
+		pkg -o REPOS_DIR="${TMPDIR}/repoconf" -o PKG_CACHEDIR="${TMPDIR}" \
+		update
+
+	# Upgrade dry-run: should show vulnerability marker on the new version
+	atf_check \
+		-o match:"\(vulnerable!\)" \
+		-o match:"WARNING: 1 package.* have known vulnerabilities" \
+		-s exit:0 \
+		pkg -o REPOS_DIR="${TMPDIR}/repoconf" -o PKG_CACHEDIR="${TMPDIR}" \
+		upgrade -n
 }

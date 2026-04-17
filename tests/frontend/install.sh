@@ -17,7 +17,10 @@ tests_init \
 	install_no_suggest_when_flag_matches \
 	install_from_url \
 	install_automatic_flag_not_on_upgrade \
-	install_disabled_repo
+	install_disabled_repo \
+	install_vulnerable \
+	install_vulnerable_not_in_range \
+	install_vulnerable_no_vuln_db
 
 test_setup()
 {
@@ -612,4 +615,138 @@ EOF
 		install -y -r myrepo test
 
 	atf_check -s exit:0 pkg info -e test
+}
+
+install_vulnerable_body()
+{
+	# Create a package and repo
+	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg "vuln" "vuln" "1.5"
+	atf_check pkg create -M vuln.ucl
+	atf_check -o ignore pkg repo .
+
+	mkdir repoconf
+	cat <<EOF > repoconf/repo.conf
+local: {
+	url: "file://${TMPDIR}",
+	enabled: true
+}
+EOF
+
+	# Create vuln.xml in PKG_DBDIR (current dir)
+	cat > vuln.xml << 'VULN'
+<?xml version="1.0" encoding="utf-8"?>
+<vuxml xmlns="http://www.vuxml.org/apps/vuxml-1">
+  <vuln vid="test-vuln-001">
+    <topic>Test vulnerability</topic>
+    <affects>
+      <package>
+        <name>vuln</name>
+        <range>
+          <ge>1.0</ge>
+          <lt>2.0</lt>
+        </range>
+      </package>
+    </affects>
+    <references>
+      <cvename>CVE-2024-00001</cvename>
+    </references>
+  </vuln>
+</vuxml>
+VULN
+
+	atf_check \
+		-o ignore \
+		-s exit:0 \
+		pkg -o REPOS_DIR="${TMPDIR}/repoconf" -o PKG_CACHEDIR="${TMPDIR}" \
+		update
+
+	# Install with dry-run: should show vulnerability markers
+	atf_check \
+		-o match:"\(vulnerable!\)" \
+		-o match:"WARNING: 1 package.* have known vulnerabilities" \
+		-s exit:1 \
+		pkg -o REPOS_DIR="${TMPDIR}/repoconf" -o PKG_CACHEDIR="${TMPDIR}" \
+		install -n vuln
+}
+
+install_vulnerable_not_in_range_body()
+{
+	# Create a package outside the vulnerable range
+	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg "safe" "safe" "3.0"
+	atf_check pkg create -M safe.ucl
+	atf_check -o ignore pkg repo .
+
+	mkdir repoconf
+	cat <<EOF > repoconf/repo.conf
+local: {
+	url: "file://${TMPDIR}",
+	enabled: true
+}
+EOF
+
+	# Vulnerability only affects versions < 2.0
+	cat > vuln.xml << 'VULN'
+<?xml version="1.0" encoding="utf-8"?>
+<vuxml xmlns="http://www.vuxml.org/apps/vuxml-1">
+  <vuln vid="test-vuln-001">
+    <topic>Test vulnerability</topic>
+    <affects>
+      <package>
+        <name>safe</name>
+        <range>
+          <ge>1.0</ge>
+          <lt>2.0</lt>
+        </range>
+      </package>
+    </affects>
+    <references>
+      <cvename>CVE-2024-00001</cvename>
+    </references>
+  </vuln>
+</vuxml>
+VULN
+
+	atf_check \
+		-o ignore \
+		-s exit:0 \
+		pkg -o REPOS_DIR="${TMPDIR}/repoconf" -o PKG_CACHEDIR="${TMPDIR}" \
+		update
+
+	# safe-3.0 is NOT in range -> no vulnerability marker
+	atf_check \
+		-o not-match:"\(vulnerable!\)" \
+		-o not-match:"WARNING.*vulnerabilities" \
+		-s exit:1 \
+		pkg -o REPOS_DIR="${TMPDIR}/repoconf" -o PKG_CACHEDIR="${TMPDIR}" \
+		install -n safe
+}
+
+install_vulnerable_no_vuln_db_body()
+{
+	# Create a package and repo, but no vuln.xml
+	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1.0"
+	atf_check pkg create -M test.ucl
+	atf_check -o ignore pkg repo .
+
+	mkdir repoconf
+	cat <<EOF > repoconf/repo.conf
+local: {
+	url: "file://${TMPDIR}",
+	enabled: true
+}
+EOF
+
+	atf_check \
+		-o ignore \
+		-s exit:0 \
+		pkg -o REPOS_DIR="${TMPDIR}/repoconf" -o PKG_CACHEDIR="${TMPDIR}" \
+		update
+
+	# No vuln.xml -> no vulnerability output, install proceeds normally
+	atf_check \
+		-o not-match:"\(vulnerable!\)" \
+		-o not-match:"WARNING.*vulnerabilities" \
+		-s exit:1 \
+		pkg -o REPOS_DIR="${TMPDIR}/repoconf" -o PKG_CACHEDIR="${TMPDIR}" \
+		install -n test
 }
