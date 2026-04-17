@@ -72,7 +72,7 @@ check_deps(struct pkgdb *db, struct pkg *p, charv_t *dh, bool noinstall, xstring
 		if (quiet)
 			pkg_fprintf(out->fp, "%n\t%S\n", p, buf);
 		else
-			pkg_fprintf(out->fp, "%n is missing a required shared library: %S\n",
+			pkg_fprintf(out->fp, "%n depends on a missing or unregistered shared library: %S\n",
 			    p, buf);
 	}
 	free(slit);
