@@ -423,7 +423,7 @@ exec_upgrade(int argc, char **argv)
 				goto cleanup;
 		}
 
-		if (messages != NULL) {
+		if (messages != NULL && !quiet) {
 			fflush(messages->fp);
 			printf("%s", messages->buf);
 		}

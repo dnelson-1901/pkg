@@ -269,7 +269,7 @@ exec_install(int argc, char **argv)
 			}
 		}
 
-		if (messages != NULL) {
+		if (messages != NULL && !quiet) {
 			fflush(messages->fp);
 			printf("%s", messages->buf);
 		}

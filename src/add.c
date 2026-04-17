@@ -204,7 +204,7 @@ exec_add(int argc, char **argv)
 	xstring_free(failedpkgs);
 
 	pkg_add_triggers();
-	if (messages != NULL) {
+	if (messages != NULL && !quiet) {
 		fflush(messages->fp);
 		printf("%s", messages->buf);
 	}

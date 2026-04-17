@@ -235,7 +235,7 @@ exec_unregister(int argc, char **argv)
 	if (!rc || (retcode = pkg_jobs_apply(jobs)) != EPKG_OK)
 		goto cleanup;
 
-	if (messages != NULL) {
+	if (messages != NULL && !quiet) {
 		fflush(messages->fp);
 		printf("%s", messages->buf);
 	}
