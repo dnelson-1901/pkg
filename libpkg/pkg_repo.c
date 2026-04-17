@@ -1168,7 +1168,12 @@ pkg_repo_load_fingerprints_from_path(const char *path, pkghash **f)
 
 	*f = NULL;
 
-	if ((fd = openat(ctx.rootfd, RELATIVE_PATH(path), O_DIRECTORY)) == -1) {
+	fd = openat(ctx.rootfd, RELATIVE_PATH(path), O_DIRECTORY);
+	if (fd == -1 && ctx.pkg_rootdir != NULL) {
+		/* Fallback: try the path on the host when using -r */
+		fd = open(path, O_DIRECTORY | O_CLOEXEC);
+	}
+	if (fd == -1) {
 		pkg_emit_error("Error opening the trusted directory %s", path);
 		return (EPKG_FATAL);
 	}
@@ -1211,7 +1216,8 @@ pkg_repo_load_fingerprints(struct pkg_repo *repo)
 
 	snprintf(path, sizeof(path), "%s/revoked", pkg_repo_fingerprints(repo));
 	/* Absence of revoked certificates is not a fatal error */
-	if (fstatat(ctx.rootfd, RELATIVE_PATH(path), &st, 0) != -1) {
+	if (fstatat(ctx.rootfd, RELATIVE_PATH(path), &st, 0) != -1 ||
+	    (ctx.pkg_rootdir != NULL && stat(path, &st) != -1)) {
 		if ((pkg_repo_load_fingerprints_from_path(path, &repo->revoked_fp)) != EPKG_OK) {
 			pkg_emit_error("Error loading revoked certificates");
 			return (EPKG_FATAL);
