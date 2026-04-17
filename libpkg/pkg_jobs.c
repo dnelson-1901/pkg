@@ -56,6 +56,7 @@
 #include <ctype.h>
 
 #include "pkg.h"
+#include <xstring.h>
 #include "private/event.h"
 #include "private/pkg.h"
 #include "private/pkgdb.h"
@@ -1046,35 +1047,51 @@ pkg_jobs_need_upgrade(charv_t *system_shlibs, struct pkg *rp, struct pkg *lp)
 	}
 
 	/* compare options */
-	for (;;) {
-		if (!pkg_object_bool(pkg_config_get("PKG_REINSTALL_ON_OPTIONS_CHANGE")))
-			break;
-		ret1 = pkg_options(rp, &ro);
-		ret2 = pkg_options(lp, &lo);
-		if (ret1 != ret2) {
-			free(rp->reason);
-			if (ro == NULL)
-				xasprintf(&rp->reason, "option removed: %s",
-				    lo->key);
-			else if (lo == NULL)
-				xasprintf(&rp->reason, "option added: %s",
-				    ro->key);
-			else
-				xasprintf(&rp->reason, "option changed: %s",
-				    ro->key);
-			assert(rp->reason != NULL);
-			return (true);
-		}
-		if (ret1 == EPKG_OK) {
-			if (!STREQ(lo->key, ro->key) ||
-			    !STREQ(lo->value, ro->value)) {
-				free(rp->reason);
-				xasprintf(&rp->reason, "options changed");
-				return (true);
+	if (pkg_object_bool(pkg_config_get("PKG_REINSTALL_ON_OPTIONS_CHANGE"))) {
+		xstring *optdiff = NULL;
+		int ndiffs = 0;
+		for (;;) {
+			ret1 = pkg_options(rp, &ro);
+			ret2 = pkg_options(lp, &lo);
+			if (ret1 != ret2) {
+				if (optdiff == NULL)
+					optdiff = xstring_new();
+				if (ro == NULL) {
+					fprintf(optdiff->fp, "%s%s (removed)",
+					    ndiffs ? ", " : "", lo->key);
+				} else if (lo == NULL) {
+					fprintf(optdiff->fp, "%s%s (added)",
+					    ndiffs ? ", " : "", ro->key);
+				}
+				ndiffs++;
+				/* lists have different lengths, done */
+				break;
+			}
+			if (ret1 != EPKG_OK)
+				break;
+			if (!STREQ(lo->key, ro->key)) {
+				if (optdiff == NULL)
+					optdiff = xstring_new();
+				fprintf(optdiff->fp, "%s%s (removed), %s (added)",
+				    ndiffs ? ", " : "", lo->key, ro->key);
+				ndiffs++;
+			} else if (!STREQ(lo->value, ro->value)) {
+				if (optdiff == NULL)
+					optdiff = xstring_new();
+				fprintf(optdiff->fp, "%s%s (%s -> %s)",
+				    ndiffs ? ", " : "", lo->key,
+				    lo->value, ro->value);
+				ndiffs++;
 			}
 		}
-		else
-			break;
+		if (ndiffs > 0) {
+			fflush(optdiff->fp);
+			free(rp->reason);
+			xasprintf(&rp->reason, "option changed: %s",
+			    optdiff->buf);
+			xstring_free(optdiff);
+			return (true);
+		}
 	}
 
 	/* What about the direct deps */

@@ -23,7 +23,9 @@ tests_init \
 	newpkgversion_two_repos \
 	upgrade_disabled_repo \
 	upgrade_all_disabled_repos \
-	upgrade_vulnerable
+	upgrade_vulnerable \
+	upgrade_options_changed \
+	upgrade_options_added_removed
 
 issue1881_body() {
 	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg pkg1 pkg_a 1
@@ -937,4 +939,90 @@ VULN
 		-s exit:0 \
 		pkg -o REPOS_DIR="${TMPDIR}/repoconf" -o PKG_CACHEDIR="${TMPDIR}" \
 		upgrade -n
+}
+
+upgrade_options_changed_body()
+{
+	# Install v1 with OPT1=on OPT2=off
+	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
+	cat <<EOF >> test.ucl
+options: {
+	"OPT1": "on"
+	"OPT2": "off"
+}
+EOF
+	atf_check -o ignore pkg register -M test.ucl
+
+	# Create v1 in repo with OPT1=off OPT2=on (same version, options differ)
+	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
+	cat <<EOF >> test.ucl
+options: {
+	"OPT1": "off"
+	"OPT2": "on"
+}
+EOF
+	atf_check pkg create -M test.ucl
+	atf_check -o ignore pkg repo .
+
+	mkdir repoconf
+	cat <<EOF > repoconf/repo.conf
+local: {
+	url: "file://${TMPDIR}",
+	enabled: true
+}
+EOF
+
+	atf_check -o ignore pkg -o REPOS_DIR="${TMPDIR}/repoconf" \
+		-o PKG_CACHEDIR="${TMPDIR}" update
+
+	# Upgrade dry-run: should show which options changed
+	atf_check \
+		-o match:"REINSTALL" \
+		-o match:"OPT1 \(on -> off\)" \
+		-o match:"OPT2 \(off -> on\)" \
+		-s exit:0 \
+		pkg -o REPOS_DIR="${TMPDIR}/repoconf" \
+		-o PKG_CACHEDIR="${TMPDIR}" upgrade -n
+}
+
+upgrade_options_added_removed_body()
+{
+	# Install v1 with OPT1=on
+	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
+	cat <<EOF >> test.ucl
+options: {
+	"OPT1": "on"
+}
+EOF
+	atf_check -o ignore pkg register -M test.ucl
+
+	# Create v1 in repo with OPT2=on (OPT1 removed, OPT2 added)
+	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
+	cat <<EOF >> test.ucl
+options: {
+	"OPT2": "on"
+}
+EOF
+	atf_check pkg create -M test.ucl
+	atf_check -o ignore pkg repo .
+
+	mkdir repoconf
+	cat <<EOF > repoconf/repo.conf
+local: {
+	url: "file://${TMPDIR}",
+	enabled: true
+}
+EOF
+
+	atf_check -o ignore pkg -o REPOS_DIR="${TMPDIR}/repoconf" \
+		-o PKG_CACHEDIR="${TMPDIR}" update
+
+	# Upgrade dry-run: should show added/removed options
+	atf_check \
+		-o match:"REINSTALL" \
+		-o match:"OPT1 \(removed\)" \
+		-o match:"OPT2 \(added\)" \
+		-s exit:0 \
+		pkg -o REPOS_DIR="${TMPDIR}/repoconf" \
+		-o PKG_CACHEDIR="${TMPDIR}" upgrade -n
 }
