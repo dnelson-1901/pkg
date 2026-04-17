@@ -136,7 +136,15 @@ exec_autoremove(int argc, char **argv)
 		goto cleanup;
 	}
 
-	if (!quiet || dry_run) {
+	if (quiet && dry_run) {
+		/* Scripting-friendly: one package name-version per line */
+		struct pkg *p = NULL, *old = NULL;
+		void *iter = NULL;
+		int t;
+		while (pkg_jobs_iter(jobs, &iter, &p, &old, &t))
+			pkg_printf("%n-%v\n", p, p);
+		goto cleanup;
+	} else if (!quiet || dry_run) {
 		print_jobs_summary(jobs,
 				"Deinstallation has been requested for the following %d packages:\n\n", nbactions);
 		if (!dry_run)

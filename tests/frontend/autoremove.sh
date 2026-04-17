@@ -6,6 +6,7 @@ tests_init \
 	autoremove \
 	autoremove_quiet \
 	autoremove_dryrun \
+	autoremove_quiet_dryrun \
 	autoremove_order
 
 autoremove_prep() {
@@ -182,4 +183,18 @@ autoremove_dryrun_body() {
 	    pkg info
 
 	test -f ${TMPDIR}/file1 -o -f ${TMPDIR}/file2 || atf_fail "Files are missing"
+}
+
+autoremove_quiet_dryrun_body() {
+	autoremove_prep
+
+	# -qn: scripting-friendly output, one package per line
+	atf_check \
+	    -o inline:"test-1\n" \
+	    -e empty \
+	    -s exit:0 \
+	    pkg autoremove -qn
+
+	# Package should still be installed
+	atf_check -s exit:0 pkg info -e test
 }

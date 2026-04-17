@@ -14,7 +14,7 @@
 .\"
 .\"     @(#)pkg.8
 .\"
-.Dd May 3, 2021
+.Dd April 17, 2026
 .Dt PKG-AUTOREMOVE 8
 .Os
 .Sh NAME
@@ -42,6 +42,9 @@ no changes are actually made.
 If a deinstallation script exists for a given package, do not execute it.
 .It Fl q , Cm --quiet
 Force quiet output.
+When combined with
+.Fl n ,
+prints one package name-version per line suitable for scripting.
 .It Fl y , Cm --yes
 Assume yes when asked for confirmation before package autoremoval.
 .El
