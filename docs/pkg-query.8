@@ -14,7 +14,7 @@
 .\"
 .\"     @(#)pkg.8
 .\"
-.Dd December 13, 2025
+.Dd April 17, 2026
 .Dt PKG-QUERY 8
 .Os
 .Sh NAME
@@ -293,6 +293,64 @@ stands for the annotation tag, and
 .Cm v
 stands for the annotation value.
 .El
+.Ss Inline iteration with \&%{...\&%}
+.Pp
+When the format string contains a
+.Cm \&%{...\&%}
+construct, the entire format is interpreted using
+.Xr pkg_printf 3
+format codes instead of the legacy query format codes.
+This allows multiline items to be joined on a single line using a
+custom separator, rather than producing one line per item.
+.Pp
+The syntax is:
+.Bd -literal -offset indent
+%X%{<item-format>%|<separator>%}
+.Ed
+.Pp
+Where
+.Cm X
+is a list-valued format code
+.Pq Cm A , B , C , D , F , G , L , O , U , d , r , b , y , Y ,
+.Cm <item-format>
+is the format for each item, and
+.Cm <separator>
+.Pq delimited by Cm \&%|
+is optional and inserted between items.
+.Pp
+Inside
+.Cm \&%{...\&%} ,
+use
+.Xr pkg_printf 3
+sub-option codes:
+.Cm \&%On
+for option name
+.Pq Cm \&%Ok No is accepted as a deprecated alias ,
+.Cm \&%Ov
+for option value,
+.Cm \&%An
+for annotation name
+.Pq Cm \&%At No is accepted as a deprecated alias ,
+.Cm \&%Fn
+for file path,
+.Cm \&%Fp
+for file permissions,
+.Cm \&%Cn
+for category name, etc.
+See
+.Xr pkg_printf 3
+for the full list of format codes.
+.Pp
+.Sy Note :
+When using
+.Cm \&%{...\&%} ,
+the format codes outside the braces must also follow
+.Xr pkg_printf 3
+conventions.
+In particular,
+.Cm \&%Fn
+is used for file path
+.Pq not Cm \&%Fp No as in legacy query format .
 .Sh EVALUATION FORMAT
 Packages can be selected by using expressions comparing
 .Ar Variables
@@ -462,6 +520,15 @@ List unmaintained packages:
 .Pp
 List packages that depend on python312:
 .Dl $ pkg query -e '%dn = python312' %o
+.Pp
+List all categories of a package on a single line, separated by spaces:
+.Dl $ pkg query '%n: %C%{%Cn%| %}' firefox
+.Pp
+List all shared libraries used by a package on a single line:
+.Dl $ pkg query '%n: %B%{%Bn%| %}' perl
+.Pp
+List all options of a package in key=value format:
+.Dl $ pkg query '%n %O%{%On=%Ov%| %}' vim
 .Sh SEE ALSO
 .Xr pkg_create 3 ,
 .Xr pkg_printf 3 ,

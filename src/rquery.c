@@ -197,7 +197,40 @@ exec_rquery(int argc, char **argv)
 			match = MATCH_ALL;
 	}
 
-	if (!index_output && analyse_query_string(argv[0], accepted_rquery_flags, q_flags_len, &query_flags, &multiline) != EPKG_OK) {
+	if (!index_output && strstr(argv[0], "%{") != NULL) {
+		multiline = '{';
+		for (const char *p = argv[0]; *p != '\0'; p++) {
+			if (*p != '%')
+				continue;
+			p++;
+			if (*p == '{' || *p == '|' || *p == '}' ||
+			    *p == '%' || *p == '\0')
+				continue;
+			while (*p == '#' || *p == '?' || *p == '-' ||
+			    (*p >= '0' && *p <= '9'))
+				p++;
+			switch (*p) {
+			case 'A': query_flags |= PKG_LOAD_ANNOTATIONS; break;
+			case 'B': query_flags |= PKG_LOAD_SHLIBS_REQUIRED; break;
+			case 'C': query_flags |= PKG_LOAD_CATEGORIES; break;
+			case 'D': query_flags |= PKG_LOAD_DIRS; break;
+			case 'F': query_flags |= PKG_LOAD_FILES; break;
+			case 'G': query_flags |= PKG_LOAD_GROUPS; break;
+			case 'L': query_flags |= PKG_LOAD_LICENSES; break;
+			case 'O': query_flags |= PKG_LOAD_OPTIONS; break;
+			case 'U': query_flags |= PKG_LOAD_USERS; break;
+			case 'd': query_flags |= PKG_LOAD_DEPS; break;
+			case 'r': query_flags |= PKG_LOAD_RDEPS; break;
+			case 'b': query_flags |= PKG_LOAD_SHLIBS_PROVIDED; break;
+			case 'y': query_flags |= PKG_LOAD_PROVIDES; break;
+			case 'Y': query_flags |= PKG_LOAD_REQUIRES; break;
+			case 'X': query_flags |= PKG_LOAD_BASIC |
+			    PKG_LOAD_SCRIPTS | PKG_LOAD_LUA_SCRIPTS; break;
+			}
+		}
+	} else if (!index_output && analyse_query_string(argv[0],
+	    accepted_rquery_flags, q_flags_len, &query_flags,
+	    &multiline) != EPKG_OK) {
 		vec_free(&reponames);
 		return (EXIT_FAILURE);
 	}

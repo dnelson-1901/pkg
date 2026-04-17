@@ -827,6 +827,24 @@ static const struct pkg_printf_fmt	fmt[] = {
 		PP_ALL,
 		&format_int_checksum,
 	},
+	[PP_PKG_OPTION_KEY] =
+	{
+		'O',
+		'k',
+		false,
+		false,
+		PP_PKG|PP_O,
+		&format_option_name,
+	},
+	[PP_PKG_ANNOTATION_TAG] =
+	{
+		'A',
+		't',
+		false,
+		false,
+		PP_PKG|PP_A,
+		&format_annotation_name,
+	},
 	[PP_LITERAL_PERCENT] =
 	{
 		'%',
@@ -3269,6 +3287,74 @@ pkg_xstring_vprintf(xstring * restrict buf, const char * restrict format,
 
 	free_percent_esc(p);
 	return (buf);
+}
+/**
+ * Format data from a single pkg into buf, using the same pkg pointer
+ * for every format code.  Unlike pkg_xstring_vprintf which consumes
+ * one va_arg per format code, this always uses the supplied pkg.
+ */
+static xstring *
+pkg_xstring_printf_set(xstring * restrict buf,
+    const char * restrict format, struct pkg *pkg)
+{
+	const char		*f, *fend;
+	struct percent_esc	*p;
+
+	assert(buf != NULL);
+	assert(format != NULL);
+
+	f = format;
+	p = new_percent_esc();
+
+	if (p == NULL) {
+		xstring_reset(buf);
+		return (buf);
+	}
+
+	while ( *f != '\0' ) {
+		switch(*f) {
+		case '%':
+			fend = parse_format(f, PP_PKG, p);
+			f = process_format_main(buf, p, f, fend, pkg);
+			break;
+		case '\\':
+			f = process_escape(buf, f);
+			break;
+		default:
+			fputc(*f, buf->fp);
+			f++;
+			break;
+		}
+		if (f == NULL) {
+			xstring_reset(buf);
+			break;
+		}
+	}
+
+	free_percent_esc(p);
+	return (buf);
+}
+
+int
+pkg_fprintf_pkg(FILE * restrict stream, const char * restrict format,
+    struct pkg *pkg)
+{
+	xstring	*buf;
+	int	 count;
+
+	buf = xstring_new();
+
+	if (buf)
+		buf = pkg_xstring_printf_set(buf, format, pkg);
+	fflush(buf->fp);
+	if (buf && strlen(buf->buf) > 0) {
+		count = fprintf(stream, "%s", buf->buf);
+	} else
+		count = -1;
+	if (buf)
+		xstring_free(buf);
+
+	return (count);
 }
 /*
  * That's All Folks!

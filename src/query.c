@@ -413,6 +413,12 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 	struct pkg_kvlist	*kl = NULL;
 	struct pkg_kvlist_iterator	*kit;
 
+	if (multiline == '{') {
+		pkg_fprintf_pkg(stdout, qstr, pkg);
+		putchar('\n');
+		return;
+	}
+
 	output = xstring_new();
 	bool printed = false;
 
@@ -1132,8 +1138,46 @@ exec_query(int argc, char **argv)
 		goto cleanup;
 	}
 
-	if (analyse_query_string(argv[0], accepted_query_flags, q_flags_len,
-			&query_flags, &multiline) != EPKG_OK) {
+	if (strstr(argv[0], "%{") != NULL) {
+		/*
+		 * Format string uses pkg_printf %{..%} syntax.
+		 * Delegate entirely to pkg_fprintf_pkg and extract
+		 * PKG_LOAD flags from the main format characters.
+		 */
+		multiline = '{';
+		for (const char *p = argv[0]; *p != '\0'; p++) {
+			if (*p != '%')
+				continue;
+			p++;
+			/* skip %{, %|, %}, %% */
+			if (*p == '{' || *p == '|' || *p == '}' ||
+			    *p == '%' || *p == '\0')
+				continue;
+			/* skip field width/modifiers */
+			while (*p == '#' || *p == '?' || *p == '-' ||
+			    (*p >= '0' && *p <= '9'))
+				p++;
+			switch (*p) {
+			case 'A': query_flags |= PKG_LOAD_ANNOTATIONS; break;
+			case 'B': query_flags |= PKG_LOAD_SHLIBS_REQUIRED; break;
+			case 'C': query_flags |= PKG_LOAD_CATEGORIES; break;
+			case 'D': query_flags |= PKG_LOAD_DIRS; break;
+			case 'F': query_flags |= PKG_LOAD_FILES; break;
+			case 'G': query_flags |= PKG_LOAD_GROUPS; break;
+			case 'L': query_flags |= PKG_LOAD_LICENSES; break;
+			case 'O': query_flags |= PKG_LOAD_OPTIONS; break;
+			case 'U': query_flags |= PKG_LOAD_USERS; break;
+			case 'd': query_flags |= PKG_LOAD_DEPS; break;
+			case 'r': query_flags |= PKG_LOAD_RDEPS; break;
+			case 'b': query_flags |= PKG_LOAD_SHLIBS_PROVIDED; break;
+			case 'y': query_flags |= PKG_LOAD_PROVIDES; break;
+			case 'Y': query_flags |= PKG_LOAD_REQUIRES; break;
+			case 'X': query_flags |= PKG_LOAD_BASIC |
+			    PKG_LOAD_SCRIPTS | PKG_LOAD_LUA_SCRIPTS; break;
+			}
+		}
+	} else if (analyse_query_string(argv[0], accepted_query_flags,
+	    q_flags_len, &query_flags, &multiline) != EPKG_OK) {
 		retcode = EXIT_FAILURE;
 		goto cleanup;
 	}

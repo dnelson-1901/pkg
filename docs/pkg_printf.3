@@ -458,6 +458,10 @@ Default row format
 .It Cm \^%An
 Annotation tag name [string]
 .Vt struct pkg_note *
+.It Cm \^%At
+Deprecated alias for
+.Cm %An .
+.Vt struct pkg_note *
 .It Cm \^%Av
 Annotation value [string]
 .Vt struct pkg_note *
@@ -567,6 +571,10 @@ Default row format:
 .Cm "%O%{%On %Ov\en%|%}"
 .It Cm %On
 Option name [string]
+.Vt struct pkg_option *
+.It Cm %Ok
+Deprecated alias for
+.Cm %On .
 .Vt struct pkg_option *
 .It Cm %Ov
 Option value [string]

@@ -54,6 +54,7 @@ global:
 	pkg_files;
 	pkg_finish_repo;
 	pkg_fprintf;
+	pkg_fprintf_pkg;
 	pkg_free;
 	pkg_get_b;
 	pkg_get_cachedir;

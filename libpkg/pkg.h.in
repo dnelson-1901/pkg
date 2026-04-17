@@ -1641,6 +1641,13 @@ int pkg_vprintf(const char * restrict format, va_list ap);
 int pkg_fprintf(FILE * restrict stream, const char * restrict format, ...);
 
 /**
+ * Variant of pkg_fprintf that uses the same pkg for every format code,
+ * instead of consuming one va_arg per code.  This is useful for query-style
+ * output where a single format string refers to one package.
+ */
+int pkg_fprintf_pkg(FILE * restrict stream, const char * restrict format, struct pkg *pkg);
+
+/**
  * print to named stream from pkg as indicated by the format code format
  * @param ap varargs arglist
  * @param format String with embedded %-escapes indicating what to output

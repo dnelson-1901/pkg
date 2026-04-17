@@ -14,7 +14,7 @@
 .\"
 .\"     @(#)pkg.8
 .\"
-.Dd July 7, 2024
+.Dd April 17, 2026
 .Dt PKG-RQUERY 8
 .Os
 .Sh NAME
@@ -245,6 +245,17 @@ stands for the annotation tag, and
 .Cm v
 stands for the annotation value.
 .El
+.Ss Inline iteration with \&%{...\&%}
+.Pp
+When the format string contains a
+.Cm \&%{...\&%}
+construct, the entire format is interpreted using
+.Xr pkg_printf 3
+format codes.
+This allows multiline items to be joined on a single line.
+See
+.Xr pkg-query 8
+for full details and examples.
 .Sh EVALUATION FORMAT
 .Ss Variables
 .Bl -tag -width Ds
