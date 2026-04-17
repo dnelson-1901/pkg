@@ -8,6 +8,7 @@ tests_init \
 	update_disabled_repo \
 	update_all_disabled_repos \
 	update_override_disabled_repo \
+	update_nonexistent_repo
 
 update_error_body() {
 
@@ -178,6 +179,7 @@ EOF
 
 	atf_check \
 		-o match:"No repositories are enabled" \
+		-e match:"WARNING: repository 'nonexistent' does not exist" \
 		-s exit:1 \
 		pkg -R repos update -r nonexistent
 }
@@ -256,4 +258,39 @@ EOF
 		-o match:"Updating myrepo" \
 		-s exit:0 \
 		pkg -R repos update -r myrepo
+}
+
+update_nonexistent_repo_body()
+{
+	# Specifying a nonexistent repo with -r should warn
+	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
+	atf_check pkg create -M test.ucl
+	atf_check -o ignore pkg repo .
+
+	mkdir repos
+	cat <<EOF > repos/real.conf
+real: {
+	url: "file://${TMPDIR}",
+	enabled: true
+}
+EOF
+
+	atf_check \
+		-o match:"Updating real" \
+		-s exit:0 \
+		pkg -R repos update -r real
+
+	# Update with a mix of real and nonexistent repos
+	atf_check \
+		-e match:"WARNING: repository 'bogus' does not exist" \
+		-o match:"Updating real" \
+		-s exit:0 \
+		pkg -R repos update -r real -r bogus
+
+	# Update with only a nonexistent repo
+	atf_check \
+		-o match:"No repositories are enabled" \
+		-e match:"WARNING: repository 'bogus' does not exist" \
+		-s exit:1 \
+		pkg -R repos update -r bogus
 }

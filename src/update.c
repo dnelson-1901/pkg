@@ -102,6 +102,23 @@ pkgcli_update(bool force, bool strict, c_charv_t *reponames)
 		total_count ++;
 	}
 
+	/* Warn about requested repos that don't exist */
+	if (reponames->len > 0) {
+		vec_foreach(*reponames, i) {
+			struct pkg_repo *check = NULL;
+			bool found = false;
+			while (pkg_repos(&check) == EPKG_OK) {
+				if (STREQ(reponames->d[i], pkg_repo_name(check))) {
+					found = true;
+					break;
+				}
+			}
+			if (!found)
+				fprintf(stderr, "WARNING: repository '%s' "
+				    "does not exist\n", reponames->d[i]);
+		}
+	}
+
 	if (total_count == 0) {
 		retcode = EPKG_FATAL;
 		if (!quiet) {
