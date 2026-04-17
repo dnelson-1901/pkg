@@ -55,11 +55,14 @@ EOF
 
 	mkdir ${TMPDIR}/target
 	atf_check \
-		-o inline:"this is post install1\nthis is post install2\nthis is a message\n" \
+		-o save:output \
 		-e empty \
 		-s exit:0 \
-		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.pkg
+		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -fy ${TMPDIR}/test-1.pkg
 
+	# PKG_MSGFD message must appear after script stdout
+	atf_check -o inline:"this is post install1\nthis is post install2\nthis is a message\n" \
+		grep -E "post install|a message" output
 }
 
 daemon_body() {
@@ -84,11 +87,15 @@ EOF
 
 	mkdir ${TMPDIR}/target
 	atf_check \
-		-o inline:"this is post install1\nthis is post install2\nthis is a message\n" \
+		-o save:output \
 		-e empty \
 		-s exit:0 \
-		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.pkg
+		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -fy ${TMPDIR}/test-1.pkg
 
+	# PKG_MSGFD message must appear after script stdout, daemon must not appear
+	atf_check -o inline:"this is post install1\nthis is post install2\nthis is a message\n" \
+		grep -E "post install|a message" output
+	atf_check -s exit:1 grep "this is a daemon" output
 }
 
 upgrade_body() {

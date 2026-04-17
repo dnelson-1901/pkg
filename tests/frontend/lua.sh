@@ -93,11 +93,14 @@ EOF
 
 	mkdir ${TMPDIR}/target
 	atf_check \
-		-o inline:"this is post install1\nthis is post install2\nthis is a message\n" \
+		-o save:output \
 		-e empty \
 		-s exit:0 \
-		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.pkg
+		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -fy ${TMPDIR}/test-1.pkg
 
+	# pkg.print_msg output must appear after script stdout
+	atf_check -o inline:"this is post install1\nthis is post install2\nthis is a message\n" \
+		grep -E "post install|a message" output
 }
 
 script_rooteddir_body() {
@@ -305,9 +308,9 @@ files: {
 lua_scripts: {
   post-install: [ <<EOS
   if pkg.filecmp("${TMPDIR}/a", "${TMPDIR}/b") == 0 then
-     pkg.print_msg("same")
+     print("same")
   else
-     pkg.print_msg("different")
+     print("different")
   end
 EOS
 , ]
@@ -346,9 +349,9 @@ files: {
 lua_scripts: {
   post-install: [ <<EOS
   if pkg.filecmp("${TMPDIR}/a", "${TMPDIR}/b") == 0 then
-     pkg.print_msg("same")
+     print("same")
   else
-     pkg.print_msg("different")
+     print("different")
   end
 EOS
 , ]
@@ -385,9 +388,9 @@ files: {
 lua_scripts: {
   post-install: [ <<EOS
   if pkg.filecmp("${TMPDIR}/c", "${TMPDIR}/d") == 0 then
-     pkg.print_msg("same")
+     print("same")
   else
-     pkg.print_msg("different")
+     print("different")
   end
 EOS
 , ]
@@ -431,9 +434,9 @@ files: {
 lua_scripts: {
   post-install: [ <<EOS
   if pkg.filecmp("${TMPDIR}/c", "${TMPDIR}/d") == 0 then
-     pkg.print_msg("same")
+     print("same")
   else
-     pkg.print_msg("different")
+     print("different")
   end
 EOS
 , ]
@@ -733,9 +736,9 @@ lua_scripts: {
   post-install: [ <<EOS
   local st = pkg.stat("${TMPDIR}/plop")
   if st.size == 0 then
-     pkg.print_msg("zero")
+     print("zero")
   end
-  pkg.print_msg(st.type)
+  print(st.type)
 EOS
 , ]
 }
@@ -789,16 +792,16 @@ lua_scripts: {
   post-install: [ <<EOS
 -- Test capturing stdout
 local out, err, code = pkg.exec_capture({"/bin/echo", "hello world"})
-pkg.print_msg("stdout:" .. out)
-pkg.print_msg("exitcode:" .. tostring(code))
+print("stdout:" .. out)
+print("exitcode:" .. tostring(code))
 
 -- Test capturing stderr
 local out2, err2, code2 = pkg.exec_capture({"/bin/sh", "-c", "echo errmsg >&2"})
-pkg.print_msg("stderr:" .. err2)
+print("stderr:" .. err2)
 
 -- Test exit code
 local out3, err3, code3 = pkg.exec_capture({"/bin/sh", "-c", "exit 42"})
-pkg.print_msg("code:" .. tostring(code3))
+print("code:" .. tostring(code3))
 EOS
 , ]
 }
