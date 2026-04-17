@@ -334,7 +334,11 @@ exec_check(int argc, char **argv)
 		return (EXIT_FAILURE);
 	}
 
-	ret = pkgdb_access(PKGDB_MODE_READ, PKGDB_DB_LOCAL);
+	bool readonly = !dcheck || noinstall;
+	int mode = readonly ? PKGDB_MODE_READ :
+	    PKGDB_MODE_READ|PKGDB_MODE_WRITE;
+
+	ret = pkgdb_access(mode, PKGDB_DB_LOCAL);
 
 	if (ret == EPKG_ENODB) {
 		if (!quiet)
@@ -348,7 +352,7 @@ exec_check(int argc, char **argv)
 		return (EXIT_FAILURE);
 	}
 
-	ret = pkgdb_open(&db, PKGDB_DEFAULT);
+	ret = pkgdb_open(&db, readonly ? PKGDB_DEFAULT_READONLY : PKGDB_DEFAULT);
 	if (ret != EPKG_OK)
 		return (EXIT_FAILURE);
 
