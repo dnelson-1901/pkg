@@ -2622,7 +2622,17 @@ pkgdb_compact(struct pkgdb *db)
 	if (freelist_count > 0 && freelist_count / (float)page_count < 0.25)
 		return (EPKG_OK);
 
-	return (sql_exec(db->sqlite, "VACUUM;"));
+	char *errmsg = NULL;
+	if (sqlite3_exec(db->sqlite, "VACUUM;", NULL, NULL, &errmsg)
+	    != SQLITE_OK) {
+		pkg_dbg(PKG_DBG_DB, 1, "VACUUM failed: %s",
+		    errmsg ? errmsg : "unknown error");
+		sqlite3_free(errmsg);
+		pkg_emit_notice("Database compaction failed, "
+		    "performance may be affected");
+	}
+
+	return (EPKG_OK);
 }
 
 static int
