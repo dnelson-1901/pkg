@@ -132,8 +132,16 @@ pkgdb_regex(sqlite3_context *ctx, int argc, sqlite3_value **argv)
 			cflags = REG_EXTENDED | REG_NOSUB | REG_ICASE;
 
 		re = xmalloc(sizeof(regex_t));
-		if (regcomp(re, regex, cflags) != 0) {
-			sqlite3_result_error(ctx, "Invalid regex\n", -1);
+		int rc = regcomp(re, regex, cflags);
+		if (rc != 0) {
+			char errbuf[256];
+			regerror(rc, re, errbuf, sizeof(errbuf));
+			char msg[512];
+			snprintf(msg, sizeof(msg),
+			    "Invalid regex '%s': %s\n"
+			    "Use -e for exact match or -g for glob",
+			    regex, errbuf);
+			sqlite3_result_error(ctx, msg, -1);
 			free(re);
 			return;
 		}
