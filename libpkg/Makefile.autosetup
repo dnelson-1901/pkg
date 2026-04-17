@@ -189,6 +189,9 @@ lib$(LIB)_flat.a: ${STATIC_LIBS} mergelib_script
 	$(AR) -M < mergelib_script
 @endif
 
+clean:
+	rm -f mergelib_script
+
 mergelib_script: $(STATIC_LIBS)
 	@echo "CREATE lib$(LIB)_flat.a" > $@
 	@for l in $(STATIC_LIBS); do \

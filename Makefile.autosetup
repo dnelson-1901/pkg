@@ -27,6 +27,9 @@ check: all
 @if TESTS
 all: Kyuafile Makefile
 
+clean:
+	rm -f Kyuafile
+
 check: UndefinedBehaviour.suppress Leak.suppress
 	export UBSAN_OPTIONS=print_stacktrace=1:halt_on_error=1:suppressions=$(top_builddir)/UndefinedBehaviour.suppress; \
 	export LSAN_OPTIONS=print_suppressions=0:exitcode=0:suppressions=$(top_builddir)/Leak.suppress; \
