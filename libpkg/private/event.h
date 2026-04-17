@@ -65,6 +65,7 @@ typedef enum {
 	PKG_DBG_PACKAGE = (1UL << 9),
 	PKG_DBG_DATABASE = (1UL << 10),
 	PKG_DBG_SCHEDULER = (1UL << 11),
+	PKG_DBG_VERIFY = (1UL << 12),
 	PKG_DBG_ALL = (1UL << 63),
 } pkg_debug_flags;
 
@@ -86,6 +87,7 @@ static const struct pkg_dbg_flags debug_flags[] = {
 	{ PKG_DBG_PACKAGE, "package" },
 	{ PKG_DBG_DATABASE, "db" },
 	{ PKG_DBG_SCHEDULER, "scheduler" },
+	{ PKG_DBG_VERIFY, "verify" },
 	{ PKG_DBG_ALL, "all" },
 };
 

@@ -188,10 +188,9 @@ ossl_verify_cert_cb(int fd, void *ud)
 	free(hash);
 	if (ret <= 0 && cbdata->verbose) {
 		if (ret < 0)
-			pkg_emit_error("rsa verify failed: %s",
+			pkg_dbg(PKG_DBG_VERIFY, 1, "rsa verify failed: %s",
 					ERR_error_string(ERR_get_error(), errbuf));
-		else
-			pkg_emit_error("rsa signature verification failure");
+		pkg_emit_error("signature verification failure");
 	}
 	if (ret <= 0) {
 		EVP_PKEY_CTX_free(ctx);
@@ -303,11 +302,10 @@ ossl_verify_cb(int fd, void *ud)
 	free(sha256);
 	if (ret <= 0) {
 		if (ret < 0)
-			pkg_emit_error("%s: %s", cbdata->key,
+			pkg_dbg(PKG_DBG_VERIFY, 1, "%s: %s", cbdata->key,
 				ERR_error_string(ERR_get_error(), errbuf));
-		else
-			pkg_emit_error("%s: rsa signature verification failure",
-			    cbdata->key);
+		pkg_emit_error("%s: signature verification failure",
+		    cbdata->key);
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L && !defined(LIBRESSL_VERSION_NUMBER)
 		EVP_PKEY_CTX_free(ctx);
 #else
@@ -442,8 +440,9 @@ ossl_sign_data(struct pkgsign_ctx *sctx, const unsigned char *msg, size_t msgsz,
 	ret = RSA_sign(NID_sha1, msg, msgsz, *sigret, siglen, rsa);
 #endif
 	if (ret <= 0) {
-		pkg_emit_error("%s: %s", keyinfo->sctx.path,
+		pkg_dbg(PKG_DBG_VERIFY, 1, "%s: %s", keyinfo->sctx.path,
 		   ERR_error_string(ERR_get_error(), errbuf));
+		pkg_emit_error("%s: signing failed", keyinfo->sctx.path);
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L && !defined(LIBRESSL_VERSION_NUMBER)
 		EVP_PKEY_CTX_free(ctx);
 #else
@@ -542,8 +541,9 @@ ossl_generate(struct pkgsign_ctx *sctx, const struct iovec *iov __unused,
 	keyinfo->key = pkey;
 out:
 	if (rc != EPKG_OK) {
-		pkg_emit_error("%s: %s", path,
+		pkg_dbg(PKG_DBG_VERIFY, 1, "%s: %s", path,
 		    ERR_error_string(ERR_get_error(), errbuf));
+		pkg_emit_error("%s: error loading private key", path);
 
 		/* keyinfo claims the pkey on success for any future operations. */
 		EVP_PKEY_free(pkey);
