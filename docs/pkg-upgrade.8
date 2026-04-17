@@ -91,6 +91,13 @@ option or the
 setting in
 .Pa pkg.conf .
 .Pp
+If the vulnerability database
+.Pa ( vuln.xml )
+is available
+.Pq see Xr pkg-audit 8 ,
+the summary will flag any packages with known vulnerabilities and
+display a warning with the count of affected packages.
+.Pp
 Packages are fetched from the repositories into the local package
 cache if they are not already present, or if the checksum of the
 cached package file differs from the one in the repository.
