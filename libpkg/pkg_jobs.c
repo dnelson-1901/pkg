@@ -998,6 +998,45 @@ pkg_jobs_find_remote_pattern(struct pkg_jobs *j, struct job_pattern *jp)
 	return (rc);
 }
 
+static bool
+charv_diff(const charv_t *local, const charv_t *remote,
+    const char *label, char **reason)
+{
+	xstring *diff = NULL;
+	int nd = 0;
+	size_t li = 0, ri = 0;
+	size_t ll = vec_len(local);
+	size_t rl = vec_len(remote);
+
+	while (li < ll || ri < rl) {
+		int cmp;
+		if (li >= ll) cmp = 1;
+		else if (ri >= rl) cmp = -1;
+		else cmp = strcmp(local->d[li], remote->d[ri]);
+		if (cmp < 0) {
+			if (diff == NULL) diff = xstring_new();
+			fprintf(diff->fp, "%s%s (removed)",
+			    nd ? ", " : "", local->d[li]);
+			nd++; li++;
+		} else if (cmp > 0) {
+			if (diff == NULL) diff = xstring_new();
+			fprintf(diff->fp, "%s%s (added)",
+			    nd ? ", " : "", remote->d[ri]);
+			nd++; ri++;
+		} else {
+			li++; ri++;
+		}
+	}
+	if (nd > 0) {
+		fflush(diff->fp);
+		free(*reason);
+		xasprintf(reason, "%s: %s", label, diff->buf);
+		xstring_free(diff);
+		return (true);
+	}
+	return (false);
+}
+
 bool
 pkg_jobs_need_upgrade(charv_t *system_shlibs, struct pkg *rp, struct pkg *lp)
 {
@@ -1095,35 +1134,45 @@ pkg_jobs_need_upgrade(charv_t *system_shlibs, struct pkg *rp, struct pkg *lp)
 	}
 
 	/* What about the direct deps */
+
+	xstring *diff = NULL;
+	int nd = 0;
 	for (;;) {
 		ret1 = pkg_deps(rp, &rd);
 		ret2 = pkg_deps(lp, &ld);
 		if (ret1 != ret2) {
-			free(rp->reason);
-			if (rd == NULL)
-				xasprintf(&rp->reason, "direct dependency removed: %s",
-				    ld->name);
-			else if (ld == NULL)
-				xasprintf(&rp->reason, "direct dependency added: %s",
-				    rd->name);
-			else
-				xasprintf(&rp->reason, "direct dependency changed: %s",
-				    rd->name);
-			assert (rp->reason != NULL);
-			return (true);
-		}
-		if (ret1 == EPKG_OK) {
-			if (!STREQ(rd->name, ld->name) ||
-			    !STREQ(rd->origin, ld->origin)) {
-				free(rp->reason);
-				xasprintf(&rp->reason, "direct dependency changed: %s",
-				    rd->name);
-				assert (rp->reason != NULL);
-				return (true);
+			if (diff == NULL) diff = xstring_new();
+			if (rd == NULL) {
+				fprintf(diff->fp, "%s%s (removed)",
+				    nd ? ", " : "", ld->name);
+			} else if (ld == NULL) {
+				fprintf(diff->fp, "%s%s (added)",
+				    nd ? ", " : "", rd->name);
 			}
-		}
-		else
+			nd++;
 			break;
+		}
+		if (ret1 != EPKG_OK)
+			break;
+		if (!STREQ(rd->name, ld->name)) {
+			if (diff == NULL) diff = xstring_new();
+			fprintf(diff->fp, "%s%s (removed), %s (added)",
+			    nd ? ", " : "", ld->name, rd->name);
+			nd++;
+		} else if (!STREQ(rd->origin, ld->origin)) {
+			if (diff == NULL) diff = xstring_new();
+			fprintf(diff->fp, "%s%s (origin changed)",
+			    nd ? ", " : "", rd->name);
+			nd++;
+		}
+	}
+	if (nd > 0) {
+		fflush(diff->fp);
+		free(rp->reason);
+		xasprintf(&rp->reason, "direct dependency changed: %s",
+		    diff->buf);
+		xstring_free(diff);
+		return (true);
 	}
 
 	/* Conflicts */
@@ -1146,86 +1195,74 @@ pkg_jobs_need_upgrade(charv_t *system_shlibs, struct pkg *rp, struct pkg *lp)
 			break;
 	}
 
-	/* Provides */
-	if (vec_len(&rp->provides) != vec_len(&lp->provides)) {
-		free(rp->reason);
-		rp->reason = xstrdup("provides changed");
-		return (true);
-	}
 	pkg_lists_sort(lp);
 	pkg_lists_sort(rp);
 
-	vec_foreach(lp->provides, i) {
-		if (!STREQ(lp->provides.d[i], rp->provides.d[i])) {
-			free(rp->reason);
-			rp->reason = xstrdup("provides changed");
-			return (true);
-		}
-	}
-
-	/* Requires */
-	if (vec_len(&rp->requires) != vec_len(&lp->requires)) {
-		free(rp->reason);
-		rp->reason = xstrdup("requires changed");
+	if (charv_diff(&lp->provides, &rp->provides,
+	    "provides changed", &rp->reason))
 		return (true);
-	}
-	vec_foreach(lp->requires, i) {
-		if (!STREQ(lp->requires.d[i], rp->requires.d[i])) {
-			free(rp->reason);
-			rp->reason = xstrdup("requires changed");
-			return (true);
-		}
-	}
 
-	/* Finish by the shlibs */
-	if (vec_len(&rp->shlibs_provided) != vec_len(&lp->shlibs_provided)) {
-		free(rp->reason);
-		rp->reason = xstrdup("provided shared library changed");
+	if (charv_diff(&lp->requires, &rp->requires,
+	    "requires changed", &rp->reason))
 		return (true);
-	}
-	vec_foreach(lp->shlibs_provided, i) {
-		if (!STREQ(lp->shlibs_provided.d[i], rp->shlibs_provided.d[i])) {
-			free(rp->reason);
-			rp->reason = xstrdup("provided shared library changed");
-			return (true);
-		}
-	}
 
-	size_t cntr = vec_len(&rp->shlibs_required);
-	size_t cntl = vec_len(&lp->shlibs_required);
-	bool has_system_shlibs = vec_len(system_shlibs) > 0;
-
-	if (cntr != cntl && !has_system_shlibs) {
-		free(rp->reason);
-		rp->reason = xstrdup("required shared library changed");
+	if (charv_diff(&lp->shlibs_provided, &rp->shlibs_provided,
+	    "provided shared library changed", &rp->reason))
 		return (true);
-	}
 
-	size_t i = 0, j = 0;
-	while (i < cntl || j < cntr) {
-		if (has_system_shlibs) {
-			while (i < cntl &&
-			    charv_search(system_shlibs,
-			    lp->shlibs_required.d[i]) != NULL)
-				i++;
-			while (j < cntr &&
-			    charv_search(system_shlibs,
-			    rp->shlibs_required.d[j]) != NULL)
-				j++;
+	/* shlibs_required needs special handling for system shlibs */
+	{
+		xstring *diff = NULL;
+		int nd = 0;
+		size_t cntl = vec_len(&lp->shlibs_required);
+		size_t cntr = vec_len(&rp->shlibs_required);
+		bool has_system_shlibs = vec_len(system_shlibs) > 0;
+		size_t i = 0, j = 0;
+		while (i < cntl || j < cntr) {
+			if (has_system_shlibs) {
+				while (i < cntl &&
+				    charv_search(system_shlibs,
+				    lp->shlibs_required.d[i]) != NULL)
+					i++;
+				while (j < cntr &&
+				    charv_search(system_shlibs,
+				    rp->shlibs_required.d[j]) != NULL)
+					j++;
+			}
+			if (i >= cntl && j >= cntr)
+				break;
+			int cmp;
+			if (i >= cntl) cmp = 1;
+			else if (j >= cntr) cmp = -1;
+			else cmp = strcmp(lp->shlibs_required.d[i],
+			    rp->shlibs_required.d[j]);
+			if (cmp < 0) {
+				if (diff == NULL) diff = xstring_new();
+				fprintf(diff->fp, "%s%s (removed)",
+				    nd ? ", " : "",
+				    lp->shlibs_required.d[i]);
+				nd++; i++;
+			} else if (cmp > 0) {
+				if (diff == NULL) diff = xstring_new();
+				fprintf(diff->fp, "%s%s (added)",
+				    nd ? ", " : "",
+				    rp->shlibs_required.d[j]);
+				nd++; j++;
+			} else {
+				i++; j++;
+			}
 		}
-		if (i >= cntl && j >= cntr)
-			break;
-		if (i >= cntl || j >= cntr ||
-		    !STREQ(lp->shlibs_required.d[i],
-		    rp->shlibs_required.d[j])) {
+		if (nd > 0) {
+			fflush(diff->fp);
 			free(rp->reason);
-			rp->reason =
-			    xstrdup("required shared library changed");
+			xasprintf(&rp->reason,
+			    "required shared library changed: %s",
+			    diff->buf);
+			xstring_free(diff);
 			return (true);
 		}
-		i++;
-		j++;
 	}
+
 	return (false);
 }
 
