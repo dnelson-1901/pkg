@@ -23,7 +23,8 @@ tests_init \
 	delete_force_recursive \
 	delete_dry_run_no_remove \
 	delete_autoremove \
-	delete_autoremove_flag
+	delete_autoremove_flag \
+	delete_exclude_glob
 
 delete_all_body() {
 	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "foo" "foo" "1"
@@ -560,4 +561,28 @@ EOF
 	# Both should be gone
 	atf_check -s exit:1 pkg info -e master
 	atf_check -s exit:1 pkg info -e dep
+}
+
+delete_exclude_glob_body()
+{
+	# Install 3 packages: base-lib, base-runtime, app
+	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg "base-lib" "base-lib" "1"
+	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg "base-runtime" "base-runtime" "1"
+	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg "app" "app" "1"
+	atf_check -o ignore pkg register -M base-lib.ucl
+	atf_check -o ignore pkg register -M base-runtime.ucl
+	atf_check -o ignore pkg register -M app.ucl
+
+	# Delete all except base-*
+	atf_check \
+		-o match:"Deinstalling app" \
+		-o not-match:"base-lib" \
+		-o not-match:"base-runtime" \
+		-s exit:0 \
+		pkg delete -yf -a -G "base-*"
+
+	# base packages should remain, app should be gone
+	atf_check -s exit:0 pkg info -e base-lib
+	atf_check -s exit:0 pkg info -e base-runtime
+	atf_check -s exit:1 pkg info -e app
 }
