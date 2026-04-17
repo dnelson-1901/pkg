@@ -457,14 +457,6 @@ event_callback(void *data, struct pkg_event *ev)
 		filename = strrchr(ev->e_fetching.url, '/');
 		if (filename != NULL) {
 			filename++;
-			char *tmp = strrchr(filename, '~');
-			if (tmp != NULL) {
-				*tmp = '\0';
-			} else {
-				tmp = strrchr(filename, '.');
-				if (tmp != NULL && strcmp(tmp, ".pkg") == 0)
-					*tmp = '\0';
-			}
 		} else {
 			/*
 			 * We failed at being smart, so display
@@ -474,7 +466,19 @@ event_callback(void *data, struct pkg_event *ev)
 		}
 		job_status_begin(msg_buf);
 		progress_debit = true;
-		fprintf(msg_buf->fp, "Fetching %s", filename);
+		const char *tmp = strrchr(filename, '~');
+		if (tmp != NULL)
+			fprintf(msg_buf->fp, "Fetching %.*s",
+					(int)(tmp - filename), filename);
+		else {
+			tmp = strrchr(filename, '.');
+			if (tmp != NULL && strcmp(tmp, ".pkg") == 0)
+				fprintf(msg_buf->fp, "Fetching %.*s",
+						(int)(tmp - filename), filename);
+			else
+				fprintf(msg_buf->fp, "Fetching %s",
+						filename);
+		}
 		break;
 	case PKG_EVENT_FETCH_FINISHED:
 		progress_debit = false;
