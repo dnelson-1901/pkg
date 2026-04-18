@@ -3,7 +3,9 @@
 . $(atf_get_srcdir)/test_environment.sh
 
 tests_init \
-	basic
+	basic \
+	clean_all_no_repo_db \
+	clean_no_repo_db
 
 basic_body() {
 	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
@@ -54,3 +56,39 @@ EOF
 		pkg -C /dev/null -o PKG_CACHEDIR=${TMPDIR}/cache -o REPOS_DIR="${TMPDIR}/reposconf" clean -n
 }
 
+clean_all_no_repo_db_body() {
+	# pkg clean -a should work even without any repo database
+	mkdir -p reposconf cache
+	cat > reposconf/repo.conf << EOF
+testrepo: {
+    url: "file:///nonexistent",
+    enabled: true
+}
+EOF
+	echo "fake" > cache/test-1~abc123.pkg
+
+	atf_check \
+		-o match:"test-1" \
+		-e empty \
+		-s exit:0 \
+		pkg -o REPOS_DIR="${TMPDIR}/reposconf" -o PKG_CACHEDIR=${TMPDIR}/cache clean -an
+}
+
+clean_no_repo_db_body() {
+	# pkg clean (without -a) should treat all cached files as obsolete
+	# when no repo database exists, instead of erroring out
+	mkdir -p reposconf cache
+	cat > reposconf/repo.conf << EOF
+testrepo: {
+    url: "file:///nonexistent",
+    enabled: true
+}
+EOF
+	echo "fake" > cache/test-1~abc123.pkg
+
+	atf_check \
+		-o match:"test-1" \
+		-e empty \
+		-s exit:0 \
+		pkg -o REPOS_DIR="${TMPDIR}/reposconf" -o PKG_CACHEDIR=${TMPDIR}/cache clean -n
+}

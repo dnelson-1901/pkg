@@ -309,35 +309,41 @@ exec_clean(int argc, char **argv)
 		return (errno == ENOENT ? EXIT_SUCCESS : EXIT_FAILURE);
 	}
 
-	retcode = pkgdb_access(PKGDB_MODE_READ, PKGDB_DB_REPO);
+	/*
+	 * When no repo catalogue exists, every cached file is obsolete.
+	 * When cleaning all (-a), the repo catalogue is not needed at all.
+	 */
+	if (!all) {
+		retcode = pkgdb_access(PKGDB_MODE_READ, PKGDB_DB_REPO);
 
-	if (retcode == EPKG_ENOACCESS) {
-		warnx("Insufficient privileges to clean old packages");
-		close(cachefd);
-		return (EXIT_FAILURE);
-	} else if (retcode == EPKG_ENODB) {
-		warnx("No package database installed.  Nothing to do!");
-		close(cachefd);
-		return (EXIT_SUCCESS);
-	} else if (retcode != EPKG_OK) {
-		warnx("Error accessing the package database");
-		close(cachefd);
-		return (EXIT_FAILURE);
+		if (retcode == EPKG_ENOACCESS) {
+			warnx("Insufficient privileges to clean old packages");
+			close(cachefd);
+			return (EXIT_FAILURE);
+		} else if (retcode == EPKG_ENODB) {
+			all = true;
+		} else if (retcode != EPKG_OK) {
+			warnx("Error accessing the package database");
+			close(cachefd);
+			return (EXIT_FAILURE);
+		}
 	}
 
 	retcode = EXIT_FAILURE;
 
-	if (pkgdb_open(&db, PKGDB_REMOTE) != EPKG_OK) {
-		close(cachefd);
-		return (EXIT_FAILURE);
-	}
+	if (!all) {
+		if (pkgdb_open(&db, PKGDB_REMOTE) != EPKG_OK) {
+			close(cachefd);
+			return (EXIT_FAILURE);
+		}
 
-	if (pkgdb_obtain_lock(db, PKGDB_LOCK_READONLY) != EPKG_OK) {
-		pkgdb_close(db);
-		close(cachefd);
-		warnx("Cannot get a read lock on a database, it is locked by "
-		    "another process");
-		return (EXIT_FAILURE);
+		if (pkgdb_obtain_lock(db, PKGDB_LOCK_READONLY) != EPKG_OK) {
+			pkgdb_close(db);
+			close(cachefd);
+			warnx("Cannot get a read lock on a database, "
+			    "it is locked by another process");
+			return (EXIT_FAILURE);
+		}
 	}
 
 #ifdef HAVE_CAPSICUM
@@ -386,8 +392,10 @@ exec_clean(int argc, char **argv)
 	}
 
 cleanup:
-	pkgdb_release_lock(db, PKGDB_LOCK_READONLY);
-	pkgdb_close(db);
+	if (db != NULL) {
+		pkgdb_release_lock(db, PKGDB_LOCK_READONLY);
+		pkgdb_close(db);
+	}
 	vec_free_and_free(&dl, free);
 
 	if (cachefd != -1)
