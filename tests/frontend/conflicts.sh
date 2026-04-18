@@ -586,7 +586,7 @@ Installed packages to be UPGRADED:
 	testa: 2.0 -> 2.1
 
 Installed packages to be REINSTALLED:
-	testb-2 (direct dependency changed: testa-lib)
+	testb-2 (direct dependency changed: testa (removed), testa-lib (added))
 
 Number of packages to be installed: 1
 Number of packages to be upgraded: 1
@@ -707,7 +707,7 @@ Installed packages to be UPGRADED:
 	testa: 2.0 -> 2.1
 
 Installed packages to be REINSTALLED:
-	testb-2 (direct dependency changed: testa-lib)
+	testb-2 (direct dependency changed: testa (removed), testa-lib (added))
 
 Number of packages to be installed: 1
 Number of packages to be upgraded: 1

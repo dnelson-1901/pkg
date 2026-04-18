@@ -256,7 +256,7 @@ Installed packages to be UPGRADED:
 	php53-gd: 5.3.27 -> 5.3.40
 
 Installed packages to be REINSTALLED:
-	php53-extensions-1.6 (requires changed)
+	php53-extensions-1.6 (requires changed: php-5.3.27 (removed), php-5.3.40 (added))
 
 Number of packages to be installed: 1
 Number of packages to be upgraded: 2
@@ -282,7 +282,7 @@ Installed packages to be UPGRADED:
 	php53-gd: 5.3.27 -> 5.3.40
 
 Installed packages to be REINSTALLED:
-	php53-extensions-1.6 (requires changed)
+	php53-extensions-1.6 (requires changed: php-5.3.27 (removed), php-5.3.40 (added))
 
 Number of packages to be upgraded: 2
 Number of packages to be reinstalled: 1
