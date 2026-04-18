@@ -556,6 +556,16 @@ struct pkg_repo {
 
 	bool enable;
 
+	/*
+	 * Override state from $PKG_DBDIR/repos_state/.
+	 * REPO_STATE_NONE means the config value is used as-is.
+	 */
+	enum {
+		REPO_STATE_NONE = 0,
+		REPO_STATE_ENABLED,
+		REPO_STATE_DISABLED,
+	} state;
+
 	unsigned int priority;
 
 	ip_version_t ip;

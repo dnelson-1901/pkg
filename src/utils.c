@@ -1329,12 +1329,13 @@ print_repository(struct pkg_repo *repo, bool pad)
 			break;
 	}
 
-	printf("%s%s: { \n    %-16s: \"%s\",\n    %-16s: %s,\n"
+	printf("%s%s: { \n    %-16s: \"%s\",\n    %-16s: %s%s,\n"
 			"    %-16s: %d",
 			pad ? "  " : "",
 			pkg_repo_name(repo),
 			"url", pkg_repo_url(repo),
 			"enabled", pkg_repo_enabled(repo) ? "yes" : "no",
+			pkg_repo_overridden(repo) ? " (overridden by pkg)" : "",
 			"priority", pkg_repo_priority(repo));
 
 	if (pkg_repo_mirror_type(repo) != NOMIRROR)

@@ -79,7 +79,8 @@ TESTS_SH= \
 	frontend/http.sh \
 	frontend/triggers.sh \
 	frontend/info.sh \
-	frontend/force_reinstall_shlib.sh
+	frontend/force_reinstall_shlib.sh \
+	frontend/repositories.sh
 
 #
 # These files are mostly simple binaries obtained from

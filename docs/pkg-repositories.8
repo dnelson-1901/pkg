@@ -27,24 +27,21 @@
 .\"
 .\"     @(#)pkg.8
 .\"
-.Dd July 21, 2025
+.Dd April 18, 2026
 .Dt PKG-REPOSITORIES 8
 .Os
 .Sh NAME
 .Nm "pkg repositories"
-.Nd display configured package repositories
+.Nd display and manage package repositories
 .Sh SYNOPSIS
 .Nm
 .Op Fl d
 .Op Fl e
 .Op Fl l
-.Op Ar repositories
-.Pp
+.Op Ar repository
 .Nm
-.Op Fl -disabled
-.Op Fl -enabled
-.Op Fl -list
-.Op Ar repositories
+.Ar repository
+.Cm enable | disable | reset
 .Sh DESCRIPTION
 .Nm
 displays configured software repositories for the package manager,
@@ -53,6 +50,30 @@ displays configured software repositories for the package manager,
 If given the name of an existing repository as an argument,
 only print its configuration.
 Without arguments all repositories are printed.
+.Pp
+When a repository name is followed by an action
+.Pq Cm enable , disable , or reset ,
+.Nm
+manages a persistent override for the repository's enabled state.
+The override is stored as a file under
+.Pa $PKG_DBDIR/repos_state/enable/
+or
+.Pa $PKG_DBDIR/repos_state/disable/
+and takes precedence over the configuration files regardless of the
+override chain.
+.Pp
+The
+.Cm reset
+action removes the override, reverting to the value from the
+configuration files.
+.Pp
+When a repository's state is overridden, the
+.Nm
+and
+.Cm pkg -vv
+commands display
+.Dq (overridden by pkg)
+next to the enabled status.
 .Sh OPTIONS
 The following options are supported by
 .Nm :
@@ -63,6 +84,15 @@ Print disabled repositories only.
 Print enabled repositories only.
 .It Fl l , Fl -list
 Print the list of repository names.
+.El
+.Sh ACTIONS
+.Bl -tag -width disable
+.It Cm enable
+Force the repository to be enabled, overriding the configuration files.
+.It Cm disable
+Force the repository to be disabled, overriding the configuration files.
+.It Cm reset
+Remove a previous override, reverting to the configuration file value.
 .El
 .Sh FILES
 .Bl -tag -width "/usr/local/etc/pkg/pkg.conf.sample"
@@ -77,6 +107,10 @@ example
 monolithic configuration, including default repository
 .It Pa /usr/local/etc/pkg/repos/
 location for site specific repositories
+.It Pa /var/db/pkg/repos_state/enable/
+directory containing override files for enabled repositories
+.It Pa /var/db/pkg/repos_state/disable/
+directory containing override files for disabled repositories
 .El
 .Sh EXAMPLES
 Display all repositories:
@@ -86,6 +120,18 @@ Display all repositories:
 Display all repositories configurations:
 .Pp
 .Dl pkg repositories
+.Pp
+Disable a repository:
+.Pp
+.Dl pkg repositories FreeBSD-ports disable
+.Pp
+Re-enable it:
+.Pp
+.Dl pkg repositories FreeBSD-ports enable
+.Pp
+Remove the override (revert to configuration):
+.Pp
+.Dl pkg repositories FreeBSD-ports reset
 .Sh SEE ALSO
 .Xr pkg_create 3 ,
 .Xr pkg_printf 3 ,

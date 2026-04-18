@@ -1614,6 +1614,38 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 		add_repo_obj(cur, path, flags);
 	}
 
+	/* Apply repos_state overrides from $PKG_DBDIR/repos_state/{enable,disable}/ */
+	{
+		int dbfd = pkg_get_dbdirfd();
+		int statefd = -1;
+		if (dbfd != -1)
+			statefd = openat(dbfd, "repos_state", O_DIRECTORY | O_CLOEXEC);
+		if (statefd != -1) {
+			int enablefd = openat(statefd, "enable",
+			    O_DIRECTORY | O_CLOEXEC);
+			int disablefd = openat(statefd, "disable",
+			    O_DIRECTORY | O_CLOEXEC);
+			while (pkg_repos(&repo) == EPKG_OK) {
+				const char *name = pkg_repo_name(repo);
+				if (enablefd != -1 &&
+				    faccessat(enablefd, name, F_OK, 0) == 0) {
+					repo->enable = true;
+					repo->state = REPO_STATE_ENABLED;
+				} else if (disablefd != -1 &&
+				    faccessat(disablefd, name, F_OK, 0) == 0) {
+					repo->enable = false;
+					repo->state = REPO_STATE_DISABLED;
+				}
+			}
+			if (enablefd != -1)
+				close(enablefd);
+			if (disablefd != -1)
+				close(disablefd);
+			close(statefd);
+		}
+		repo = NULL;
+	}
+
 	/* validate the different scheme */
 	while (pkg_repos(&repo) == EPKG_OK) {
 		object = ucl_object_find_key(config, "VALID_URL_SCHEME");
@@ -1838,6 +1870,12 @@ bool
 pkg_repo_enabled(struct pkg_repo *r)
 {
 	return (r->enable);
+}
+
+bool
+pkg_repo_overridden(struct pkg_repo *r)
+{
+	return (r->state != REPO_STATE_NONE);
 }
 
 mirror_t
