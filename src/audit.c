@@ -251,7 +251,7 @@ exec_audit(int argc, char **argv)
 
 	audit = pkg_audit_new();
 
-	if (fetch == true) {
+	if (fetch) {
 		if (pkg_audit_fetch(NULL, audit_file) != EPKG_OK) {
 			pkg_audit_free(audit);
 			return (EXIT_FAILURE);

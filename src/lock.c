@@ -109,8 +109,8 @@ do_lock_unlock(struct pkgdb *db, int match, const char *pkgname,
 	}
 
 	/* No package was found matching that name. */
-        if (gotone == false)
-	        exitcode = EXIT_FAILURE;
+	if (!gotone)
+		exitcode = EXIT_FAILURE;
 
 cleanup:
 	vec_free_and_free(&pkgs, pkg_free);

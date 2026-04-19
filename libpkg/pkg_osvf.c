@@ -1035,7 +1035,7 @@ pkg_osvf_parse_ranges(struct pkg_audit_versions_range *range, const ucl_object_t
 
 	while ((cur = ucl_iterate_object(range_array, &it, true)))
 	{
-		if(is_first == false)
+		if (!is_first)
 		{
 			next_range = xcalloc(1, sizeof(struct pkg_audit_versions_range));
 			range->next = next_range;
@@ -1099,7 +1099,7 @@ pkg_osvf_parse_references(struct pkg_audit_entry *entry, const ucl_object_t *ref
 
 	while ((cur = ucl_iterate_object(ref_obj, &it, true)))
 	{
-		if(is_first == false)
+		if (!is_first)
 		{
 			next_package = xcalloc(1, sizeof(struct pkg_audit_reference));
 			reference->next = next_package;
@@ -1156,7 +1156,7 @@ pkg_osvf_parse_affected(struct pkg_audit_entry *entry, const ucl_object_t *aff_o
 	*/
 	while ((cur = ucl_iterate_object(aff_obj, &it, true)))
 	{
-		if(is_first == false)
+		if (!is_first)
 		{
 			next_package = xcalloc(1, sizeof(struct pkg_audit_package));
 			package->next = next_package;
@@ -1325,7 +1325,7 @@ pkg_osvf_print_entry(struct pkg_audit_entry *entry)
 	printf("\tPackage names: ");
 	while(names)
 	{
-		if(is_first == false)
+		if (!is_first)
 		{
 			printf(", ");
 		}
