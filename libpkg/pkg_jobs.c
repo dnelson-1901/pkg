@@ -1554,8 +1554,12 @@ jobs_solve_full_upgrade(struct pkg_jobs *j)
 
 		pkg = NULL;
 		while (pkgdb_it_next(it, &pkg, flags) == EPKG_OK) {
-			/* Do not test we ignore what doesn't exists remotely */
-			pkg_jobs_find_upgrade(j, pkg->uid, MATCH_INTERNAL);
+			if (pkg_jobs_find_upgrade(j, pkg->uid,
+			    MATCH_INTERNAL) == EPKG_FATAL &&
+			    (j->flags & PKG_FLAG_FORCE))
+				pkg_emit_notice("%s is installed but "
+				    "not available in any configured "
+				    "repository", pkg->uid);
 		}
 		pkg_free(pkg);
 		pkgdb_it_free(it);
