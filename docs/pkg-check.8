@@ -77,6 +77,10 @@ Use case sensitive standard or regular expression
 .Fl ( x )
 matching with
 .Ar pattern .
+This is the default unless
+.Ev CASE_SENSITIVE_MATCH
+has been set to false in
+.Pa pkg.conf .
 .It Fl d , Fl -dependencies
 Checks for and installs missing dependencies
 .It Fl g , Fl -glob
@@ -88,10 +92,6 @@ Use case insensitive standard or regular expression
 .Fl ( x )
 matching with
 .Ar pattern .
-This is the default unless
-.Ev CASE_SENSITIVE_MATCH
-has been set to true in
-.Pa pkg.conf .
 .It Fl m , Fl -metadata
 Checks for metadata discrepancies between the recorded state in pkgdb and the filesystem.
 .It Fl n , Fl -dry-run

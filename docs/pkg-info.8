@@ -72,6 +72,10 @@ Make the standard or the regular expression
 matching against
 .Ar pkg-name
 case sensitive.
+This is the default, unless modified by setting
+.Ev CASE_SENSITIVE_MATCH
+to false in
+.Pa pkg.conf .
 .It Fl D , Cm --pkg-message
 Show the pkg-message for matching packages.
 .It Fl d , Cm --dependencies
@@ -105,10 +109,6 @@ Make the standard or the regular expression
 matching against
 .Ar pkg-name
 case insensitive.
-This is the default, unless modified by setting
-.Ev CASE_SENSITIVE_MATCH
-to true in
-.Pa pkg.conf .
 .It Fl k , Cm --locked
 Show the locking status for
 .Ar pkg-name .

@@ -130,6 +130,10 @@ Make the standard or the regular expression
 matching against
 .Ar pkg-name
 case sensitive.
+This is the default, unless modified by setting
+.Ev CASE_SENSITIVE_MATCH
+to false in
+.Pa pkg.conf .
 .It Fl h , Fl -help
 Displays usage information.
 .It Fl I Oo Ar index Oc , Fl -index Oo Ar index Oc
@@ -197,10 +201,6 @@ or regular expression
 matching against
 .Ar pattern
 case insensitive.
-This is the default, unless modified by setting
-.Ev CASE_SENSITIVE_MATCH
-to true in
-.Pa pkg.conf .
 .It Fl x Ar pattern , Fl -regex Ar pattern
 Only display the packages that match the regular expression.
 Uses the "modern" or "extended" syntax of

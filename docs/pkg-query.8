@@ -58,6 +58,10 @@ Make the standard or the regular expression
 matching against
 .Ar pkg-name
 in pattern case sensitive.
+This is the default, unless modified by setting
+.Ev CASE_SENSITIVE_MATCH
+to false in
+.Pa pkg.conf .
 .It Fl e , Cm --evaluate
 Match packages using the given
 .Ar evaluation-condition .
@@ -73,10 +77,6 @@ Make the standard or regular expression
 matching against
 .Ar pkg-name
 in pattern case insensitive.
-This is the default, unless modified by setting
-.Ev CASE_SENSITIVE_MATCH
-to true in
-.Pa pkg.conf .
 .It Fl g , Cm --glob
 Treat
 .Ao pattern Ac

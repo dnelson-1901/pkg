@@ -92,6 +92,10 @@ or the regular expression
 matching against
 .Ar pkg-name
 case sensitive.
+This is the default, unless modified by setting
+.Ev CASE_SENSITIVE_MATCH
+to false in
+.Pa pkg.conf .
 .It Fl c , Cm --comment
 Search for packages with comment text matching
 .Ar pattern .
@@ -126,10 +130,6 @@ or regular expression
 matching against
 .Ar pattern
 case insensitive.
-This is the default, unless modified by setting
-.Ev CASE_SENSITIVE_MATCH
-to true in
-.Pa pkg.conf .
 .It Fl L Ar label , Cm --label Ar label
 Select which identifying label is printed for each matched package,
 unless
