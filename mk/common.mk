@@ -37,3 +37,13 @@ DEPFILES_NONEMPTY=	$(DEPFILES) /nonexistent
 
 .suppress.in.suppress:
 	cp $< $@
+
+clean: clean-files
+
+clean-files:
+	rm -f $(CLEAN_FILES)
+
+distclean: distclean-files
+
+distclean-files:
+	rm -r $(DISTCLEAN_FILES)

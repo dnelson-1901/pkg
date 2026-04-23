@@ -1,5 +1,7 @@
 include $(MK)/common.mk
 
+CLEAN_FILES+=	lib$(LIB).a lib$(LIB)$(SH_SOEXT) lib$(LIB)$(LIBSOEXT) $(OBJS) $(SHOBJS) $(DEPFILES)
+
 all: lib$(LIB)$(LIBSOEXT) lib$(LIB)$(SH_SOEXT) lib$(LIB).a
 
 lib$(LIB)$(SH_SOEXT): lib$(LIB)$(LIBSOEXT)
@@ -12,7 +14,12 @@ lib$(LIB).a: $(OBJS)
 	$(AR) cr $@ $(OBJS) $(EXTRA_DEPS)
 	$(RANLIB) $@
 
-clean:
-	rm -f lib$(LIB).a lib$(LIB)$(SH_SOEXT) lib$(LIB)$(LIBSOEXT) $(OBJS) $(SHOBJS) $(DEPFILES)
+install: install-lib
 
-install:
+install-lib: lib$(LIB)$(LIBSOEXT) lib$(LIB).a
+	install -d -m 755 $(DESTDIR)$(libdir)
+	install -m 755 lib$(LIB)$(LIBSOEXT) $(DESTDIR)$(libdir)/
+	ln -sf lib$(LIB)$(LIBSOEXT) $(DESTDIR)$(libdir)/lib$(LIB)$(SH_SOEXT)
+	install -m 644 lib$(LIB).a $(DESTDIR)$(libdir)/
+
+distclean: clean
