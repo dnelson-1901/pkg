@@ -51,6 +51,8 @@ LOCAL_CFLAGS=	-I$(top_srcdir)/compat \
 LIBPKGFLAT=	-L$(top_builddir)/libpkg -lpkg_flat
 OTHER_LIBS=	@EXTRA_LIBS@ -lm -pthread
 
+CLEAN_FILES+=	pkg-static
+
 @if HAVE_PKG_LIBARCHIVE
 OTHER_LIBS+=	@PKG_LIBARCHIVE_LDFLAGS@ @PKG_LIBARCHIVE_LIBS@
 LOCAL_CFLAGS+=	@PKG_LIBARCHIVE_CFLAGS@
@@ -126,6 +128,3 @@ install: $(PROG)
 	install -d -m 755 $(DESTDIR)$(etcdir)
 	install -m 644 $(top_srcdir)/src/pkg.conf.sample $(DESTDIR)$(etcdir)/
 
-clean: clean-pkg-static
-clean-pkg-static:
-	rm -f pkg-static

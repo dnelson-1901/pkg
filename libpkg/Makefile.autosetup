@@ -120,6 +120,8 @@ STATIC_LIBS=	@REPOS_STATIC_LIBS@ \
 		$(top_builddir)/external/libfetch/libfetch.a \
 		lib$(LIB).a
 
+CLEAN_FILES+=	mergelib_script
+
 @if HAVE_LIBUTIL
 LOCAL_LDFLAGS+=	-lutil
 @endif
@@ -188,9 +190,6 @@ lib$(LIB)_flat.a: $(STATIC_LIBS)
 lib$(LIB)_flat.a: ${STATIC_LIBS} mergelib_script
 	$(AR) -M < mergelib_script
 @endif
-
-clean:
-	rm -f mergelib_script
 
 mergelib_script: $(STATIC_LIBS)
 	@echo "CREATE lib$(LIB)_flat.a" > $@
