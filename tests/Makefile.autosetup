@@ -219,6 +219,14 @@ $(TESTS): $(OBJS) $(top_builddir)/libpkg/libpkg_flat.a
 lib/pkg_printf.c: $(top_srcdir)/libpkg/pkg_printf.c
 	cp $(top_srcdir)/libpkg/pkg_printf.c $@
 
+.SUFFIXES: .bin .binin .so.1 .so.1in
+
+.binin.bin:
+	test "$<" = "$@" || cp $< $@
+
+.so.1in.so.1:
+	test "$<" = "$@" || cp $< $@
+
 .sh:
 	install -m 755 $< $@
 

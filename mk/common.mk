@@ -15,7 +15,7 @@ CFLAGS+=	-Werror=return-type
 DEPFILES_NONEMPTY=	$(DEPFILES) /nonexistent
 -include $(DEPFILES_NONEMPTY:=)
 
-.SUFFIXES: .pico .in .bin .binin .so.1 .so.1in .suppress.in .suppress
+.SUFFIXES: .pico
 
 .c.o:
 	$(CC) -Wall -Wextra -std=gnu17 -D_GNU_SOURCE=1 -MT $@ -MD -MP -MF $*.Tpo -o $@ -c $(CFLAGS) $(LOCAL_CFLAGS) $<
@@ -24,19 +24,6 @@ DEPFILES_NONEMPTY=	$(DEPFILES) /nonexistent
 .c.pico:
 	$(CC) -Wall -Wextra -std=gnu17 -D_GNU_SOURCE=1 -MT $@ -MD -MP -MF $*.Tpico -o $@ -c $(CFLAGS) $(LOCAL_CFLAGS) $(SHOBJ_CFLAGS) $<
 	mv $*.Tpico $*.Ppico
-
-.in:
-	sed -e 's|@prefix@|$(PREFIX)|g; s|@abs_top_srcdir@|$(top_srcdir)|g' \
-		-e 's|@VERSION@|$(version)|g' $< > $@
-
-.binin.bin:
-	cp $< $@
-
-.so.1in.so.1:
-	cp $< $@
-
-.suppress.in.suppress:
-	cp $< $@
 
 .PHONY: clean clean-files distclean distclean-files check
 
