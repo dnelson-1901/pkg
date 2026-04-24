@@ -19,7 +19,7 @@ LOCAL_CFLAGS=	-I$(top_srcdir)/libpkg \
 VPATH=	$(top_srcdir)/libpkg/repo/binary
 .PATH:	$(top_srcdir)/libpkg/repo/binary
 
-@if HAVE_PKG_LIBARCHIVE
+@if PKG_LIBARCHIVE_LIBS
 LOCAL_CFLAGS+=	@PKG_LIBARCHIVE_CFLAGS@
 @endif
 
