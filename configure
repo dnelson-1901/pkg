@@ -753,7 +753,14 @@ make_config_header() {
 				esac
 			done
 
+			case "$_key" in
+				HAVE_DECL_*) _emit="decl" ;;
+			esac
+
 			case "$_emit" in
+				decl)
+					echo "#define $_key $_val" ;;
+					;;
 				bare)
 					case "$_val" in
 						0)  echo "/* #undef $_key */" ;;
