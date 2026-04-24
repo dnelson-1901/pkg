@@ -378,8 +378,8 @@ for _in in mk/defs.mk.in libpkg/pkg.h.in libpkg/pkg.pc.in \
 	define_append CONF_GEN_FILES "$_in"
 done
 
-make_template Makefile.autosetup Makefile
-define_append CONF_GEN_FILES Makefile.autosetup
+make_template Makefile.in
+define_append CONF_GEN_FILES Makefile.in
 
 for _dir in external/libblake2 external/libpicosat \
 	external/liblinenoise external/libsqlite external/libfetch \
@@ -387,8 +387,8 @@ for _dir in external/libblake2 external/libpicosat \
 	external/libucl external/libelf tests docs \
 	external/liblua external/libyxml scripts external/libder \
 	external/libecc; do
-	make_template "$_dir/Makefile.autosetup" "$_dir/Makefile"
-	define_append CONF_GEN_FILES "$_dir/Makefile.autosetup"
+	make_template "$_dir/Makefile.in"
+	define_append CONF_GEN_FILES "$_dir/Makefile.in"
 done
 
 # Save configure command for re-runs
