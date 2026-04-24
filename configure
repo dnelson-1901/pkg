@@ -759,7 +759,7 @@ make_config_header() {
 
 			case "$_emit" in
 				decl)
-					echo "#define $_key $_val" ;;
+					echo "#define $_key $_val"
 					;;
 				bare)
 					case "$_val" in
