@@ -28,7 +28,7 @@ check: all
 all: Makefile
 
 $(top_builddir)/Kyuafile: $(top_srcdir)/Kyuafile
-	test "$<" = "$@" || cp $< $@
+	test "$(top_srcdir)/Kyuafile" = "$(top_builddir)/Kyuafile" || cp $(top_srcdir)/Kyuafile $(top_builddir)/Kyuafile
 
 check: $(top_builddir)/Kyuafile
 	export UBSAN_OPTIONS=print_stacktrace=1:halt_on_error=1:suppressions=$(top_srcdir)/UndefinedBehaviour.suppress; \
