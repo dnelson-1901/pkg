@@ -38,6 +38,8 @@ DEPFILES_NONEMPTY=	$(DEPFILES) /nonexistent
 .suppress.in.suppress:
 	cp $< $@
 
+.PHONY: clean clean-files distclean distclean-files check
+
 clean: clean-files
 
 clean-files:
