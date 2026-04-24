@@ -601,6 +601,8 @@ pkg_set_files_from_object(struct pkg *pkg, const ucl_object_t *obj)
 			else
 				perm = getmode(set, 0);
 			free(set);
+		} else if (STRIEQ(key, "fflags") && cur->type == UCL_INT) {
+			fflags = (u_long)ucl_object_toint(cur);
 #ifdef HAVE_STRTOFFLAGS
 		} else if (STRIEQ(key, "fflags") && cur->type == UCL_STRING) {
 			char *str_flags = (char *)ucl_object_tostring(cur);
@@ -670,6 +672,8 @@ pkg_set_dirs_from_object(struct pkg *pkg, const ucl_object_t *obj)
 			else
 				perm = getmode(set, 0);
 			free(set);
+		} else if (STRIEQ(key, "fflags") && cur->type == UCL_INT) {
+			fflags = (u_long)ucl_object_toint(cur);
 #ifdef HAVE_STRTOFFLAGS
 		} else if (STRIEQ(key, "fflags") && cur->type == UCL_STRING) {
 			char *str_flags = (char *)ucl_object_tostring(cur);
